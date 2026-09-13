@@ -8,7 +8,8 @@ import type {
 } from "./types";
 
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.VERCEL ? "https://mythh-backend.vercel.app/api/v1" : "http://localhost:3001/api/v1");
 
 export class ApiError extends Error {
   constructor(
