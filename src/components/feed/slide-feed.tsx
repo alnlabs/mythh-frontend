@@ -208,7 +208,7 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
   }
 
   async function openShareOptions() {
-    if (myth && navigator.share) {
+    if (myth && typeof navigator.share === "function") {
       try {
         await openNativeShare(myth, guess);
         return;

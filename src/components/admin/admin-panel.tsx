@@ -131,7 +131,8 @@ export function AdminPanel() {
     );
   }
 
-  if (!me?.profile) {
+  const profile = me?.profile;
+  if (!profile) {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-5 py-12 text-center">
         <p className="inline-flex items-center justify-center gap-2 text-xs uppercase tracking-[0.28em] text-[var(--gold)]">
@@ -152,13 +153,13 @@ export function AdminPanel() {
     );
   }
 
-  if (me.profile.role !== "ADMIN") {
+  if (profile.role !== "ADMIN") {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-5 py-12 text-center">
         <Shield className="mx-auto size-8 text-[var(--gold)]" />
         <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl">This desk is closed</h1>
         <p className="mt-3 text-[var(--muted)]">
-          You are signed in as {me.profile.display_name ?? "a reader"}. Ask an editor to add you.
+          You are signed in as {profile.display_name ?? "a reader"}. Ask an editor to add you.
         </p>
       </div>
     );
@@ -175,7 +176,7 @@ export function AdminPanel() {
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <h1 className="font-[family-name:var(--font-display)] text-4xl md:text-5xl">Admin</h1>
         <p className="text-sm text-[var(--muted)]">
-          Signed in as {dashboard?.admin?.display_name ?? me.profile.display_name}
+          Signed in as {dashboard?.admin?.display_name ?? profile.display_name}
         </p>
       </div>
 
@@ -343,7 +344,7 @@ export function AdminPanel() {
                   {person.email ?? "No email"} · {person.role} · {person.status}
                 </p>
               </div>
-              {person.id !== me.profile.id && (
+              {person.id !== profile.id && (
                 <button
                   type="button"
                   disabled={Boolean(busy)}

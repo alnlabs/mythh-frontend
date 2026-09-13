@@ -19,7 +19,7 @@ export async function copyShareLink(url: string) {
 }
 
 export async function openNativeShare(myth: Myth, guess: "TRUE" | "FALSE" | null) {
-  if (!navigator.share) {
+  if (typeof navigator.share !== "function") {
     throw new Error("Native share is not available");
   }
 

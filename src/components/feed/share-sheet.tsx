@@ -39,7 +39,7 @@ export function ShareSheet({
   onClose: () => void;
 }) {
   const [status, setStatus] = useState("");
-  const canNativeShare = typeof navigator !== "undefined" && Boolean(navigator.share);
+  const canNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
   const url = useMemo(() => mythShareUrl(myth), [myth]);
   const text = useMemo(() => mythShareText(myth, guess), [guess, myth]);
