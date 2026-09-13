@@ -2,7 +2,6 @@
 
 import {
   Copy,
-  Download,
   Link2,
   Mail,
   MessageCircle,
@@ -11,12 +10,10 @@ import {
   Share2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
-  captureShareImage,
   copyShareLink,
-  downloadShareImage,
   mythShareText,
   mythShareUrl,
   openNativeShare,
@@ -41,8 +38,6 @@ export function ShareSheet({
   guess: "TRUE" | "FALSE" | null;
   onClose: () => void;
 }) {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [blob, setBlob] = useState<Blob | null>(null);
   const [status, setStatus] = useState("");
   const canNativeShare = typeof navigator !== "undefined" && Boolean(navigator.share);
 
@@ -50,31 +45,9 @@ export function ShareSheet({
   const text = useMemo(() => mythShareText(myth, guess), [guess, myth]);
   const message = `${text} ${url}`;
 
-  useEffect(() => {
-    let active = true;
-    let objectUrl = "";
-
-    captureShareImage(myth, guess)
-      .then((image) => {
-        if (!active) return;
-        objectUrl = URL.createObjectURL(image);
-        setBlob(image);
-        setPreview(objectUrl);
-      })
-      .catch(() => {
-        if (active) setStatus("Could not make the screenshot");
-      });
-
-    return () => {
-      active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [guess, myth]);
-
   async function onNativeShare() {
-    if (!blob) return;
     try {
-      await openNativeShare(myth, blob, guess);
+      await openNativeShare(myth, guess);
       setStatus("Opened share options");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -89,12 +62,6 @@ export function ShareSheet({
     } catch {
       setStatus("Could not copy the link");
     }
-  }
-
-  function onSave() {
-    if (!blob) return;
-    downloadShareImage(blob, myth.slug);
-    setStatus("Screenshot saved");
   }
 
   const apps = [
@@ -176,15 +143,11 @@ export function ShareSheet({
           </button>
         </div>
 
-        <div className="mb-5 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--ink)]">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Share preview" className="mx-auto h-44 w-auto object-contain" />
-          ) : (
-            <div className="flex h-44 items-center justify-center text-sm text-[var(--muted)]">
-              Preparing screenshot…
-            </div>
-          )}
+        <div className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--ink)] px-4 py-3">
+          <p className="line-clamp-2 font-[family-name:var(--font-display)] text-[var(--cream)]">
+            “{myth.title}”
+          </p>
+          <p className="mt-2 break-all text-sm text-[var(--gold)]">{url}</p>
         </div>
 
         <div className="flex gap-4 overflow-x-auto pb-2">
@@ -206,7 +169,7 @@ export function ShareSheet({
           ))}
         </div>
 
-        <div className="mt-5 grid grid-cols-3 gap-2">
+        <div className="mt-5 grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => void onCopy()}
@@ -214,14 +177,6 @@ export function ShareSheet({
           >
             <Copy className="size-5 text-[var(--gold)]" />
             Copy link
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            className="flex flex-col items-center gap-2 rounded-2xl bg-[var(--ink)] px-3 py-3 text-xs text-[var(--cream)]"
-          >
-            <Download className="size-5 text-[var(--gold)]" />
-            Save image
           </button>
           <button
             type="button"

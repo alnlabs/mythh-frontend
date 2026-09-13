@@ -13,29 +13,71 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { CommentsPanel } from "@/components/comments-panel";
 import { ShareSheet } from "@/components/feed/share-sheet";
 import { api, ApiError } from "@/lib/api";
-import { captureShareImage, openNativeShare } from "@/lib/share-card";
+import {
+  pickNextMyth,
+  pickRandomAd,
+  readSeenMyths,
+  rememberSeenMyth,
+  shouldShowAd,
+} from "@/lib/feed";
+import { openNativeShare } from "@/lib/share-card";
+import { countryName } from "@/lib/country";
 import type { FeedItem, Myth } from "@/lib/types";
+
+function startItem(items: FeedItem[]) {
+  return items.find((item) => item.kind === "myth") ?? items[0] ?? null;
+}
+
+function startMyth(items: FeedItem[]) {
+  const first = startItem(items);
+  return first?.kind === "myth" ? first.myth : null;
+}
 
 export function SlideFeed({ items }: { items: FeedItem[] }) {
   const { me, login, loading } = useAuth();
-  const [index, setIndex] = useState(0);
-  const [guess, setGuess] = useState<"TRUE" | "FALSE" | null>(null);
-  const [myth, setMyth] = useState<Myth | null>(
-    items[0]?.kind === "myth" ? items[0].myth : null,
+  const myths = useMemo(
+    () => items.filter((item): item is Extract<FeedItem, { kind: "myth" }> => item.kind === "myth").map((item) => item.myth),
+    [items],
   );
+  const ads = useMemo(
+    () => items.filter((item): item is Extract<FeedItem, { kind: "ad" }> => item.kind === "ad").map((item) => item.ad),
+    [items],
+  );
+  const [current, setCurrent] = useState<FeedItem | null>(() => startItem(items));
+  const [history, setHistory] = useState<FeedItem[]>([]);
+  const [seen, setSeen] = useState<string[]>(() => readSeenMyths());
+  const [guess, setGuess] = useState<"TRUE" | "FALSE" | null>(null);
+  const [myth, setMyth] = useState<Myth | null>(() => startMyth(items));
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [lastWheel, setLastWheel] = useState(0);
   const feedRef = useRef<HTMLElement>(null);
+  const startId = startMyth(items)?.id ?? "";
+  const lastMythRef = useRef<Myth | null>(myth);
+  if (myth) lastMythRef.current = myth;
+  const stateRef = useRef({ current, history, seen, commentsOpen, shareOpen });
+  stateRef.current = { current, history, seen, commentsOpen, shareOpen };
 
-  const current = items[index];
+  useEffect(() => {
+    const firstMyth = myths.find((item) => item.id === startId);
+    if (!firstMyth) return;
+    setCurrent({ kind: "myth", myth: firstMyth });
+    setHistory([]);
+    setGuess(null);
+    setCommentsOpen(false);
+    setShareOpen(false);
+    setMyth(firstMyth);
+    setSeen(rememberSeenMyth(firstMyth.id));
+    // Only reset when the opened claim changes, not when the pool refreshes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startId is the session key
+  }, [startId]);
 
   useEffect(() => {
     if (!myth) return;
@@ -45,25 +87,60 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
     document.title = `${myth.title} · MYTHH`;
   }, [myth]);
 
-  const showItem = useCallback(
-    (nextIndex: number) => {
-      const safeIndex = Math.min(items.length - 1, Math.max(0, nextIndex));
-      const item = items[safeIndex];
-      setIndex(safeIndex);
-      setGuess(null);
-      setCommentsOpen(false);
-      setShareOpen(false);
-      setMyth(item?.kind === "myth" ? item.myth : null);
-    },
-    [items],
-  );
+  const showItem = useCallback((item: FeedItem | null) => {
+    if (!item) return;
+    setCurrent(item);
+    setGuess(null);
+    setCommentsOpen(false);
+    setShareOpen(false);
+    if (item.kind === "myth") {
+      setMyth(item.myth);
+      setSeen(rememberSeenMyth(item.myth.id));
+    } else {
+      setMyth(null);
+    }
+  }, []);
+
+  const goNext = useCallback(() => {
+    const { current: now, history: past, seen: seenIds, commentsOpen: comments, shareOpen: sharing } =
+      stateRef.current;
+    if (!now || comments || sharing) return;
+    if (myths.length <= 1 && (now.kind === "ad" || ads.length === 0)) return;
+
+    if (now.kind === "myth" && shouldShowAd(false, ads.length > 0)) {
+      const ad = pickRandomAd(ads, null);
+      if (ad) {
+        setHistory([...past, now]);
+        showItem({ kind: "ad", ad });
+        return;
+      }
+    }
+
+    const nextMyth = pickNextMyth(
+      myths,
+      now.kind === "myth" ? now.myth : lastMythRef.current,
+      seenIds,
+    );
+    if (!nextMyth || (now.kind === "myth" && nextMyth.id === now.myth.id)) return;
+    setHistory([...past, now]);
+    showItem({ kind: "myth", myth: nextMyth });
+  }, [ads, myths, showItem]);
+
+  const goPrev = useCallback(() => {
+    const { history: past, commentsOpen: comments, shareOpen: sharing } = stateRef.current;
+    if (comments || sharing || past.length === 0) return;
+    const previous = past[past.length - 1];
+    if (!previous) return;
+    setHistory(past.slice(0, -1));
+    showItem(previous);
+  }, [showItem]);
 
   const go = useCallback(
     (delta: number) => {
-      if (commentsOpen || shareOpen) return;
-      showItem(index + delta);
+      if (delta > 0) goNext();
+      else goPrev();
     },
-    [commentsOpen, index, shareOpen, showItem],
+    [goNext, goPrev],
   );
 
   const vote = useCallback(
@@ -81,6 +158,9 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
         await api.vote(myth.slug, value);
         const next = await api.myth(myth.slug);
         setMyth(next.myth);
+        setCurrent((now) =>
+          now?.kind === "myth" && now.myth.id === next.myth.id ? { kind: "myth", myth: next.myth } : now,
+        );
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
           login();
@@ -130,8 +210,7 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
   async function openShareOptions() {
     if (myth && navigator.share) {
       try {
-        const image = await captureShareImage(myth, guess);
-        await openNativeShare(myth, image, guess);
+        await openNativeShare(myth, guess);
         return;
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -171,8 +250,8 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
       }}
     >
       <DesktopNav
-        canPrev={index > 0}
-        canNext={index < items.length - 1}
+        canPrev={history.length > 0}
+        canNext={myths.length > 1 || (Boolean(current && current.kind === "myth") && ads.length > 0)}
         onPrev={() => go(-1)}
         onNext={() => go(1)}
       />
@@ -183,7 +262,9 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
         <MythSlide
           key={(myth ?? current.myth).id}
           myth={myth ?? current.myth}
-          number={items.slice(0, index + 1).filter((item) => item.kind === "myth").length}
+          number={
+            history.filter((item) => item.kind === "myth").length + 1
+          }
           guess={guess}
           onVote={vote}
           onComments={() => setCommentsOpen(true)}
@@ -236,6 +317,7 @@ function MythSlide({
           <ShieldQuestion className="size-3.5" />
           Claim {String(number).padStart(3, "0")}
           {myth.category ? ` · ${myth.category.name}` : ""}
+          {countryName(myth.countryCode) ? ` · ${countryName(myth.countryCode)}` : ""}
         </p>
 
         <h1 className="mt-7 max-w-full break-words font-[family-name:var(--font-display)] text-[2.25rem] leading-tight text-[var(--cream)] sm:text-5xl lg:text-6xl">

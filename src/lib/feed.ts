@@ -41,9 +41,67 @@ export function buildFeed(myths: Myth[], ads: Advertisement[]): FeedItem[] {
   return assembleFeed(shuffle(myths), ads);
 }
 
-export function buildMythFeed(start: Myth, myths: Myth[], ads: Advertisement[]): FeedItem[] {
+export function buildMythFeed(start: Myth, myths: Myth[], ads: Advertisement[]) {
   const rest = shuffle(myths.filter((myth) => myth.id !== start.id));
   return assembleFeed([start, ...rest], ads);
+}
+
+const SEEN_KEY = "mythh_seen_myths";
+const SEEN_CAP = 120;
+const RECENT_BLOCK = 16;
+
+export function readSeenMyths() {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(SEEN_KEY) ?? "[]") as unknown;
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function rememberSeenMyth(id: string) {
+  const next = [...readSeenMyths().filter((item) => item !== id), id].slice(-SEEN_CAP);
+  try {
+    window.sessionStorage.setItem(SEEN_KEY, JSON.stringify(next));
+  } catch {
+    // Private mode can block storage.
+  }
+  return next;
+}
+
+function pickRandom<T>(items: T[]) {
+  if (!items.length) return null;
+  return items[Math.floor(Math.random() * items.length)] ?? null;
+}
+
+export function pickNextMyth(myths: Myth[], current: Myth | null, seenIds: string[]) {
+  const currentId = current?.id;
+  const recent = new Set(seenIds.slice(-RECENT_BLOCK));
+  if (currentId) recent.add(currentId);
+
+  const unseen = myths.filter((myth) => myth.id !== currentId && !seenIds.includes(myth.id));
+  const fresh = myths.filter((myth) => !recent.has(myth.id));
+  let candidates = unseen.length ? unseen : fresh.length ? fresh : myths.filter((myth) => myth.id !== currentId);
+
+  if (!candidates.length) return current ?? pickRandom(myths);
+
+  const lastCategory = current?.category?.id;
+  const otherCategory = candidates.filter((myth) => myth.category?.id !== lastCategory);
+  if (lastCategory && otherCategory.length >= 2 && Math.random() < 0.82) {
+    candidates = otherCategory;
+  }
+
+  return pickRandom(candidates);
+}
+
+export function shouldShowAd(lastWasAd: boolean, hasAds: boolean) {
+  return hasAds && !lastWasAd && Math.random() < 0.16;
+}
+
+export function pickRandomAd(ads: Advertisement[], lastAdId?: string | null) {
+  const pool = ads.length > 1 ? ads.filter((ad) => ad.id !== lastAdId) : ads;
+  return pickRandom(pool);
 }
 
 export function voteLabel(value: "TRUE" | "FALSE") {

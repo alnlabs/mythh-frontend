@@ -46,6 +46,12 @@ button {
   text-align: center;
 }
 
+input:invalid,
+textarea:invalid,
+select:invalid {
+  box-shadow: none;
+}
+
 button:disabled,
 [aria-disabled="true"] {
   cursor: not-allowed;

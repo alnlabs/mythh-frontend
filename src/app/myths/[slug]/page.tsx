@@ -4,10 +4,13 @@ import { notFound } from "next/navigation";
 import { SlideFeed } from "@/components/feed/slide-feed";
 import { api } from "@/lib/api";
 import { buildMythFeed } from "@/lib/feed";
+import { requestCategory } from "@/lib/request-category";
+import { requestCountry } from "@/lib/request-country";
 import type { Myth } from "@/lib/types";
 
 type Props = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ country?: string; category?: string }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -24,7 +27,7 @@ async function loadMyth(slug: string): Promise<Myth | null> {
 
 export async function generateStaticParams() {
   try {
-    const { myths } = await api.myths("?limit=50");
+    const { myths } = await api.myths("?limit=200");
     return myths.map((myth) => ({ slug: myth.slug }));
   } catch {
     return [];
@@ -58,11 +61,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function MythPage({ params }: Props) {
+export default async function MythPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { country: countryQuery, category: categoryQuery } = await searchParams;
+  const country = await requestCountry(countryQuery);
+  const category = await requestCategory(categoryQuery);
+  const feedQuery = new URLSearchParams({ limit: "200", country });
+  if (category) feedQuery.set("category", category);
   const [myth, mythsResult, adsResult] = await Promise.all([
     loadMyth(slug),
-    api.myths("?limit=50").catch(() => ({ myths: [] })),
+    api.myths(`?${feedQuery.toString()}`).catch(() => ({ myths: [] })),
     api.advertisements().catch(() => ({ advertisements: [] })),
   ]);
   if (!myth) notFound();
@@ -88,7 +96,9 @@ export default async function MythPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <SlideFeed items={buildMythFeed(myth, mythsResult.myths, adsResult.advertisements)} />
+      <SlideFeed
+        items={buildMythFeed(myth, mythsResult.myths, adsResult.advertisements)}
+      />
     </>
   );
 }

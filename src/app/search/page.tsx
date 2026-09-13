@@ -22,7 +22,7 @@ export default async function SearchPage({
         <Search className="size-8 text-[var(--gold)]" />
         Search
       </h1>
-      <form className="relative mt-6">
+      <form noValidate className="relative mt-6">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]" />
         <input
           name="q"

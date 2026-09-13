@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [{ myths }, { categories }] = await Promise.all([
-    api.myths("?limit=50"),
+    api.myths("?limit=200"),
     api.categories(),
   ]);
 

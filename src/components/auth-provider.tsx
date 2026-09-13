@@ -1,16 +1,19 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 import { api, googleLoginUrl } from "@/lib/api";
-import type { MeResponse } from "@/lib/types";
+import { readGuestCategory, readGuestCountry, writeCategoryCookie, writeCountryCookie } from "@/lib/country";
+import type { MeResponse, Profile } from "@/lib/types";
 
 type AuthContextValue = {
   me: MeResponse | null;
   loading: boolean;
   login: () => void;
   logout: () => Promise<void>;
+  refreshMe: () => Promise<void>;
+  applyProfile: (profile: Profile) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -20,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const syncedPrefs = useRef(false);
   const [notice, setNotice] = useState(() => {
     if (typeof window === "undefined") return "";
     const auth = new URLSearchParams(window.location.search).get("auth");
@@ -28,11 +32,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return "";
   });
 
+  function applyProfile(profile: Profile) {
+    setMe((current) => (current ? { ...current, profile } : { authMode: "user", user: null, profile }));
+    if (profile.country_code) writeCountryCookie(profile.country_code);
+    writeCategoryCookie(profile.default_category?.slug ?? "all");
+  }
+
+  async function refreshMe() {
+    try {
+      const next = await api.me();
+      setMe(next);
+      if (next.profile) applyProfile(next.profile);
+    } catch {
+      setMe(null);
+    }
+  }
+
   useEffect(() => {
     function loadMe() {
       return api
         .me()
-        .then(setMe)
+        .then((next) => {
+          setMe(next);
+          if (next.profile) applyProfile(next.profile);
+        })
         .catch(() => setMe(null));
     }
 
@@ -59,6 +82,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   useEffect(() => {
+    if (loading || !me?.profile || syncedPrefs.current) return;
+    syncedPrefs.current = true;
+    if (!me.profile.country_code) {
+      const saved = readGuestCountry();
+      if (saved) {
+        void api
+          .updateMe({ countryCode: saved })
+          .then(() => refreshMe())
+          .catch(() => undefined);
+      }
+    }
+    if (!me.profile.default_category_id) {
+      const savedCategory = readGuestCategory();
+      if (savedCategory && savedCategory !== "all") {
+        void api
+          .categories()
+          .then((result) => {
+            const categoryId = result.categories.find((category) => category.slug === savedCategory)?.id;
+            if (!categoryId) return;
+            return api.updateMe({ defaultCategoryId: categoryId }).then(() => refreshMe());
+          })
+          .catch(() => undefined);
+      }
+    }
+    router.refresh();
+  }, [loading, me?.profile, refreshMe, router]);
+
+  useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(""), 3000);
     return () => window.clearTimeout(timer);
@@ -74,6 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         me,
         loading,
+        refreshMe,
+        applyProfile,
         login: () => {
           const params = new URLSearchParams(window.location.search);
           params.delete("auth");

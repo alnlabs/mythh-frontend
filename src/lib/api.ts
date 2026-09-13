@@ -62,6 +62,11 @@ export function googleLoginUrl(next = "/") {
 export const api = {
   health: () => request<{ status: string }>("/health"),
   me: () => request<MeResponse>("/me"),
+  updateMe: (body: { countryCode?: string | null; defaultCategoryId?: string | null }) =>
+    request<{ profile: Profile }>("/me", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   myMyths: () =>
     request<{
       myths: Array<{
@@ -99,6 +104,7 @@ export const api = {
     title: string;
     explanation: string;
     categoryId: string;
+    countryCode?: string | null;
     verdict?: "TRUE" | "FALSE" | "PARTIALLY_TRUE" | "UNCERTAIN";
     sources?: { title?: string; url: string }[];
   }) =>

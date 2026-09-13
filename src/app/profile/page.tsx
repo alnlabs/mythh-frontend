@@ -14,7 +14,10 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Avatar } from "@/components/avatar";
 import { useAuth } from "@/components/auth-provider";
+import { CategorySwitch } from "@/components/category-switch";
+import { CountrySwitch } from "@/components/country-switch";
 import { api } from "@/lib/api";
 import { verdictLabel } from "@/lib/feed";
 
@@ -98,18 +101,7 @@ export default function ProfilePage() {
       <div className="mt-6 grid min-w-0 gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
       <section className="h-fit rounded-3xl border border-[var(--line)] bg-[var(--ink-soft)] p-6 md:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          {me.profile.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={me.profile.avatar_url}
-              alt=""
-              className="size-20 rounded-full object-cover"
-            />
-          ) : (
-            <span className="flex size-20 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--gold)]">
-              <UserRound className="size-8" />
-            </span>
-          )}
+          <Avatar src={me.profile.avatar_url} name={name} className="size-20 text-2xl" />
           <div className="min-w-0">
             <h1 className="truncate font-[family-name:var(--font-display)] text-4xl text-[var(--cream)]">
               {name}
@@ -127,6 +119,17 @@ export default function ProfilePage() {
                 {me.profile.status === "ACTIVE" ? "Active" : "Suspended"}
               </span>
             </div>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-[var(--line)] bg-[var(--ink)] p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]">Defaults</p>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Saved to your profile. The feed opens on this topic and country.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <CategorySwitch value={me.profile.default_category?.slug ?? "all"} />
+            <CountrySwitch value={me.profile.country_code ?? "IN"} />
           </div>
         </div>
 

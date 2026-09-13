@@ -17,7 +17,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useLayoutEffect, useRef, useState } from "react";
 
+import { Avatar } from "./avatar";
 import { useAuth } from "./auth-provider";
+import { CategorySwitch } from "./category-switch";
+import { CountrySwitch } from "./country-switch";
 
 function BrandMark() {
   const titleRef = useRef<HTMLSpanElement>(null);
@@ -73,7 +76,7 @@ const links = [
   { href: "/submit", label: "Submit", icon: PenLine },
 ];
 
-export function Header() {
+export function Header({ country, category }: { country: string; category: string }) {
   const router = useRouter();
   const { me, login, logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -105,7 +108,7 @@ export function Header() {
           ))}
         </nav>
 
-        <form onSubmit={onSearch} className="relative ml-auto hidden min-w-0 max-w-xl flex-1 lg:block">
+        <form noValidate onSubmit={onSearch} className="relative ml-auto hidden min-w-0 max-w-xl flex-1 lg:block">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]" />
           <input
             value={query}
@@ -116,6 +119,8 @@ export function Header() {
         </form>
 
         <div className="ml-auto flex min-w-0 shrink-0 items-center gap-3 lg:ml-0">
+          <CategorySwitch value={category} />
+          <CountrySwitch value={country} />
           {me?.profile ? (
             <>
               {me.profile.role === "ADMIN" && (
@@ -129,9 +134,13 @@ export function Header() {
               )}
               <Link
                 href="/profile"
-                className="inline-flex max-w-28 items-center gap-1.5 truncate text-sm text-[var(--cream)] sm:max-w-40"
+                className="inline-flex max-w-36 items-center gap-2 truncate text-sm text-[var(--cream)] sm:max-w-48"
               >
-                <UserRound className="size-4 shrink-0" />
+                <Avatar
+                  src={me.profile.avatar_url}
+                  name={me.profile.display_name ?? me.profile.email ?? "Profile"}
+                  className="size-7 text-[10px]"
+                />
                 <span className="truncate">
                   {me.profile.display_name ?? me.profile.email ?? "Profile"}
                 </span>
@@ -169,7 +178,7 @@ export function Header() {
 
       {open && (
         <div className="border-t border-[var(--line)] px-5 py-4 lg:hidden">
-          <form onSubmit={onSearch} className="relative mb-4">
+          <form noValidate onSubmit={onSearch} className="relative mb-4">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]" />
             <input
               value={query}

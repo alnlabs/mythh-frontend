@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { DisclaimerSection } from "@/components/disclaimer";
+
 export const metadata = {
   title: "About",
   description:
@@ -26,7 +28,7 @@ const steps = [
   },
   {
     title: "Talk it through",
-    body: "Open comments, share a screenshot, or send the claim’s own page to a friend.",
+    body: "Open comments, or send the claim’s page link to a friend.",
   },
 ];
 
@@ -64,7 +66,8 @@ export default function AboutPage() {
         Guess the claim. Then see what people believe.
       </h1>
       <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)]">
-        MYTHH is a swipe stack of popular claims. You pick <span className="text-[var(--cream)]">Myth</span> or{" "}
+        MYTHH is a swipe stack of popular claims. Cards in the feed are AI-generated from public
+        claims on the open internet. You pick <span className="text-[var(--cream)]">Myth</span> or{" "}
         <span className="text-[var(--cream)]">Fact</span>, watch the split, and keep going. Login is only for
         actions that change the record.
       </p>
@@ -147,6 +150,8 @@ export default function AboutPage() {
           Submit a myth
         </Link>
       </div>
+
+      <DisclaimerSection />
 
       <p className="mt-10 text-center text-sm text-[var(--muted)]">MYTHH.IN · or truth?</p>
     </div>

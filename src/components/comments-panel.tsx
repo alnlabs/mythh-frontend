@@ -30,10 +30,15 @@ export function CommentsPanel({
       .catch(() => setComments([]));
   }, [open, slug]);
 
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function onSubmit(event?: FormEvent) {
+    event?.preventDefault();
     if (!me?.profile) {
       login();
+      return;
+    }
+
+    if (!content.trim()) {
+      setError("Write a comment first.");
       return;
     }
 
@@ -65,7 +70,7 @@ export function CommentsPanel({
         </button>
       </div>
 
-      <form onSubmit={onSubmit} className="mb-4 flex gap-2">
+      <form noValidate onSubmit={onSubmit} className="mb-4 flex gap-2">
         <input
           value={content}
           onChange={(event) => setContent(event.target.value)}
@@ -73,7 +78,8 @@ export function CommentsPanel({
           className="flex-1 rounded-full border border-[var(--line)] bg-[var(--ink)] px-4 py-2 text-sm text-[var(--cream)] outline-none"
         />
         <button
-          type="submit"
+          type="button"
+          onClick={onSubmit}
           className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 text-sm text-[var(--ink)]"
         >
           <Send className="size-4" />

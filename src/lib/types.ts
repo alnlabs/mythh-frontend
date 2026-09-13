@@ -9,6 +9,7 @@ export type Myth = {
   status: string;
   createdAt: string;
   updatedAt: string;
+  countryCode: string | null;
   category: { id: string; name: string; slug: string } | null;
   creator: { id: string | null; displayName: string; avatarUrl: string | null };
   sources: { id: string; title: string | null; url: string }[];
@@ -54,6 +55,9 @@ export type Profile = {
   avatar_url: string | null;
   role: "USER" | "ADMIN";
   status: "ACTIVE" | "SUSPENDED";
+  country_code: string | null;
+  default_category_id: string | null;
+  default_category: { id: string; name: string; slug: string } | null;
 };
 
 export type MeResponse = {

@@ -92,6 +92,24 @@ export function AdminPanel() {
     };
   }, [loading, me]);
 
+  function submitAd() {
+    if (adTitle.trim().length < 2) {
+      setError("Give the ad a title of at least 2 characters.");
+      return;
+    }
+    void run("new-ad", async () => {
+      await api.createAdvertisement({
+        title: adTitle,
+        body: adBody || undefined,
+        linkUrl: adLink || undefined,
+        isActive: true,
+      });
+      setAdTitle("");
+      setAdBody("");
+      setAdLink("");
+    });
+  }
+
   async function run(id: string, action: () => Promise<void>) {
     setBusy(id);
     setError("");
@@ -349,27 +367,16 @@ export function AdminPanel() {
       {tab === "ads" && (
         <section className="mt-6 space-y-4">
           <form
+            noValidate
             onSubmit={(event: FormEvent) => {
               event.preventDefault();
-              void run("new-ad", async () => {
-                await api.createAdvertisement({
-                  title: adTitle,
-                  body: adBody || undefined,
-                  linkUrl: adLink || undefined,
-                  isActive: true,
-                });
-                setAdTitle("");
-                setAdBody("");
-                setAdLink("");
-              });
+              submitAd();
             }}
             className="rounded-3xl border border-[var(--line)] bg-[var(--ink-soft)] p-5"
           >
             <h2 className="text-sm uppercase tracking-[0.2em] text-[var(--gold)]">New slide</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <input
-                required
-                minLength={2}
                 value={adTitle}
                 onChange={(event) => setAdTitle(event.target.value)}
                 placeholder="Title"
@@ -390,8 +397,9 @@ export function AdminPanel() {
               className="mt-3 w-full rounded-2xl border border-[var(--line)] bg-[var(--ink)] px-4 py-3"
             />
             <button
-              type="submit"
+              type="button"
               disabled={Boolean(busy)}
+              onClick={submitAd}
               className="mt-4 inline-flex items-center justify-center rounded-full bg-[var(--gold)] px-5 py-2 text-sm font-semibold text-[var(--ink)]"
             >
               Add ad
