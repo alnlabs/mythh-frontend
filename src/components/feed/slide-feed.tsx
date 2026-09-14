@@ -56,9 +56,17 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
   const [myth, setMyth] = useState<Myth | null>(() => startMyth(items));
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [dragStart, setDragStart] = useState<number | null>(null);
   const [lastWheel, setLastWheel] = useState(0);
   const feedRef = useRef<HTMLElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({
+    active: false,
+    startY: 0,
+    lastY: 0,
+    lastT: 0,
+    velocity: 0,
+  });
+  const swipeLock = useRef(false);
   const startId = startMyth(items)?.id ?? "";
   const lastMythRef = useRef<Myth | null>(myth);
   if (myth) lastMythRef.current = myth;
@@ -194,17 +202,74 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
     };
   }, [go, vote]);
 
-  function startDrag(target: EventTarget | null, clientY: number) {
-    if ((target as HTMLElement | null)?.closest("button, a, input, textarea, [data-share-sheet]")) return;
-    window.getSelection()?.removeAllRanges();
-    setDragStart(clientY);
+  function applySwipe(y: number, animated: boolean) {
+    const node = cardRef.current;
+    if (!node) return;
+    const distance = Math.abs(y);
+    const shrink = 1 - Math.min(0.045, distance / 4200);
+    node.style.transition = animated
+      ? "transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease"
+      : "none";
+    node.style.transform = `translate3d(0, ${y}px, 0) scale(${shrink})`;
+    node.style.opacity = String(1 - Math.min(0.42, distance / 780));
   }
 
-  function finishDrag(clientY: number) {
-    if (dragStart === null) return;
-    const delta = dragStart - clientY;
-    if (Math.abs(delta) > 48) go(delta > 0 ? 1 : -1);
-    setDragStart(null);
+  function startDrag(event: React.PointerEvent<HTMLElement>) {
+    if (commentsOpen || shareOpen || swipeLock.current) return;
+    if ((event.target as HTMLElement | null)?.closest("button, a, input, textarea, [data-share-sheet]")) {
+      return;
+    }
+    window.getSelection()?.removeAllRanges();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      active: true,
+      startY: event.clientY,
+      lastY: event.clientY,
+      lastT: Date.now(),
+      velocity: 0,
+    };
+    applySwipe(0, false);
+  }
+
+  function moveDrag(event: React.PointerEvent<HTMLElement>) {
+    if (!dragRef.current.active) return;
+    event.preventDefault();
+    window.getSelection()?.removeAllRanges();
+    const now = Date.now();
+    const dt = Math.max(1, now - dragRef.current.lastT);
+    dragRef.current.velocity = (event.clientY - dragRef.current.lastY) / dt;
+    dragRef.current.lastY = event.clientY;
+    dragRef.current.lastT = now;
+    let offset = event.clientY - dragRef.current.startY;
+    if (offset > 0 && history.length === 0) offset *= 0.22;
+    applySwipe(offset, false);
+  }
+
+  function finishDrag(event: React.PointerEvent<HTMLElement>) {
+    if (!dragRef.current.active) return;
+    dragRef.current.active = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const offset = event.clientY - dragRef.current.startY;
+    const velocity = dragRef.current.velocity;
+    const height = feedRef.current?.clientHeight ?? 720;
+    const goNextSlide = offset < -64 || velocity < -0.55;
+    const goPrevSlide = (offset > 64 || velocity > 0.55) && history.length > 0;
+
+    if (goNextSlide || goPrevSlide) {
+      swipeLock.current = true;
+      applySwipe(goNextSlide ? -height : height, true);
+      window.setTimeout(() => {
+        go(goNextSlide ? 1 : -1);
+        applySwipe(0, false);
+        swipeLock.current = false;
+      }, 260);
+      return;
+    }
+
+    applySwipe(0, true);
   }
 
   async function openShareOptions() {
@@ -233,14 +298,17 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
       ref={feedRef}
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden select-none [-webkit-user-drag:none] [-webkit-touch-callout:none]"
       style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}
-      onPointerDown={(event) => startDrag(event.target, event.clientY)}
-      onPointerMove={(event) => {
-        if (dragStart === null) return;
-        event.preventDefault();
-        window.getSelection()?.removeAllRanges();
+      onPointerDown={startDrag}
+      onPointerMove={moveDrag}
+      onPointerUp={finishDrag}
+      onPointerCancel={(event) => {
+        if (!dragRef.current.active) return;
+        dragRef.current.active = false;
+        applySwipe(0, true);
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
       }}
-      onPointerUp={(event) => finishDrag(event.clientY)}
-      onPointerCancel={() => setDragStart(null)}
       onDragStart={(event) => event.preventDefault()}
       onWheel={(event) => {
         const now = Date.now();
@@ -256,25 +324,36 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
         onNext={() => go(1)}
       />
 
-      {current.kind === "ad" ? (
-        <AdSlide title={current.ad.title} body={current.ad.body} href={current.ad.linkUrl} />
-      ) : (
-        <MythSlide
-          key={(myth ?? current.myth).id}
-          myth={myth ?? current.myth}
-          number={
-            history.filter((item) => item.kind === "myth").length + 1
-          }
-          guess={guess}
-          showStats={Boolean(guess && me?.profile)}
-          onVote={vote}
-          onComments={() => setCommentsOpen(true)}
-          onShare={() => {
-            setCommentsOpen(false);
-            void openShareOptions();
-          }}
-        />
-      )}
+      <div className="pointer-events-none absolute inset-x-0 top-1/2 z-0 flex -translate-y-1/2 justify-center md:hidden">
+        <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--gold)]/50">
+          {history.length > 0 ? "Swipe" : "Swipe up"}
+        </p>
+      </div>
+
+      <div
+        ref={cardRef}
+        className="relative z-10 flex min-h-0 w-full flex-1 flex-col will-change-transform"
+      >
+        {current.kind === "ad" ? (
+          <AdSlide title={current.ad.title} body={current.ad.body} href={current.ad.linkUrl} />
+        ) : (
+          <MythSlide
+            key={(myth ?? current.myth).id}
+            myth={myth ?? current.myth}
+            number={
+              history.filter((item) => item.kind === "myth").length + 1
+            }
+            guess={guess}
+            showStats={Boolean(guess && me?.profile)}
+            onVote={vote}
+            onComments={() => setCommentsOpen(true)}
+            onShare={() => {
+              setCommentsOpen(false);
+              void openShareOptions();
+            }}
+          />
+        )}
+      </div>
 
       {current.kind === "myth" && myth && (
         <CommentsPanel
