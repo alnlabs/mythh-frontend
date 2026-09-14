@@ -7,9 +7,31 @@ import type {
   Profile,
 } from "./types";
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (process.env.VERCEL ? "https://mythh-backend.vercel.app/api/v1" : "http://localhost:3001/api/v1");
+const LOCAL_API_URL = "http://localhost:3001/api/v1";
+const PRODUCTION_API_URL = "https://mythh-backend.vercel.app/api/v1";
+
+function isLocalApiUrl(value?: string) {
+  if (!value) return true;
+  try {
+    const host = new URL(value).hostname;
+    return host === "localhost" || host === "127.0.0.1";
+  } catch {
+    return true;
+  }
+}
+
+function resolveApiUrl() {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  const production = process.env.VERCEL || process.env.NODE_ENV === "production";
+
+  if (configured && !isLocalApiUrl(configured)) {
+    return configured.replace(/\/$/, "");
+  }
+
+  return production ? PRODUCTION_API_URL : LOCAL_API_URL;
+}
+
+export const API_URL = resolveApiUrl();
 
 export class ApiError extends Error {
   constructor(
