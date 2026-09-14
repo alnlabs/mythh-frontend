@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -5,8 +6,17 @@ import { api } from "@/lib/api";
 import { shuffle } from "@/lib/feed";
 import { requestCategory } from "@/lib/request-category";
 import { requestCountry } from "@/lib/request-country";
+import { SITE_DESCRIPTION, SITE_TITLE, pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata(): Metadata {
+  return pageMetadata({
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    path: "/",
+  });
+}
 
 function isShareCrawler(userAgent: string) {
   return /facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Pinterest|iMessage|Googlebot|bingbot|Applebot/i.test(

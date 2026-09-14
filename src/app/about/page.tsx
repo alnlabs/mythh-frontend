@@ -10,12 +10,14 @@ import {
 import Link from "next/link";
 
 import { DisclaimerSection } from "@/components/disclaimer";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: "About",
   description:
     "MYTHH is a swipe-based way to meet popular claims, choose Myth or Fact, and learn in public.",
-};
+  path: "/about",
+});
 
 const steps = [
   {

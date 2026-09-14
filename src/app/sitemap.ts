@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { api } from "@/lib/api";
+import { absoluteUrl } from "@/lib/seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [{ myths }, { categories }] = await Promise.all([
@@ -9,14 +10,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   return [
-    { url: "http://localhost:3000/" },
-    { url: "http://localhost:3000/categories" },
-    { url: "http://localhost:3000/about" },
+    { url: absoluteUrl("/"), changeFrequency: "hourly", priority: 1 },
+    { url: absoluteUrl("/categories"), changeFrequency: "weekly", priority: 0.8 },
+    { url: absoluteUrl("/about"), changeFrequency: "monthly", priority: 0.5 },
+    { url: absoluteUrl("/search"), changeFrequency: "weekly", priority: 0.4 },
+    { url: absoluteUrl("/submit"), changeFrequency: "monthly", priority: 0.3 },
     ...categories.map((category) => ({
-      url: `http://localhost:3000/categories/${category.slug}`,
+      url: absoluteUrl(`/categories/${category.slug}`),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
     })),
     ...myths.map((myth) => ({
-      url: `http://localhost:3000/myths/${myth.slug}`,
+      url: absoluteUrl(`/myths/${myth.slug}`),
+      lastModified: myth.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
     })),
   ];
 }

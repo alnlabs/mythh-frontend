@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { buildMythFeed } from "@/lib/feed";
 import { requestCategory } from "@/lib/request-category";
 import { requestCountry } from "@/lib/request-country";
+import { clipDescription, pageMetadata } from "@/lib/seo";
 import type { Myth } from "@/lib/types";
 
 type Props = {
@@ -39,26 +40,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const myth = await loadMyth(slug);
   if (!myth) return { title: "Myth" };
 
-  const description = myth.explanation.slice(0, 160);
+  const category = myth.category?.name;
+  const description = clipDescription(
+    category ? `${category}. ${myth.explanation}` : myth.explanation,
+  );
 
-  return {
+  return pageMetadata({
     title: myth.title,
     description,
-    alternates: {
-      canonical: `/myths/${myth.slug}`,
-    },
-    openGraph: {
-      title: myth.title,
-      description,
-      url: `/myths/${myth.slug}`,
-      type: "article",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: myth.title,
-      description,
-    },
-  };
+    path: `/myths/${myth.slug}`,
+    type: "article",
+    publishedTime: myth.createdAt,
+    modifiedTime: myth.updatedAt,
+    section: category,
+  });
 }
 
 export default async function MythPage({ params, searchParams }: Props) {

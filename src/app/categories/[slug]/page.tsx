@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import { FolderOpen } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { verdictLabel } from "@/lib/feed";
+import { pageMetadata } from "@/lib/seo";
 import type { Category, Myth } from "@/lib/types";
 
 async function loadCategory(slug: string): Promise<{ category: Category; myths: Myth[] } | null> {
@@ -12,6 +14,24 @@ async function loadCategory(slug: string): Promise<{ category: Category; myths: 
   } catch {
     return null;
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const data = await loadCategory(slug);
+  if (!data) return { title: "Category" };
+
+  return pageMetadata({
+    title: data.category.name,
+    description:
+      data.category.description ??
+      `Popular ${data.category.name} claims on MYTHH. Choose Myth or Fact and see what people believe.`,
+    path: `/categories/${data.category.slug}`,
+  });
 }
 
 export default async function CategoryPage({

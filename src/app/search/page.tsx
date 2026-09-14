@@ -1,12 +1,29 @@
 import { Search } from "lucide-react";
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
 import { api } from "@/lib/api";
 import { verdictLabel } from "@/lib/feed";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Search",
-};
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}): Promise<Metadata> {
+  const { q = "" } = await searchParams;
+  const query = q.trim();
+
+  return pageMetadata({
+    title: query ? `Search “${query}”` : "Search",
+    description: query
+      ? `Claims on MYTHH matching “${query}”. Choose Myth or Fact and read a short write-up.`
+      : "Search popular claims on MYTHH by title or topic.",
+    path: query ? `/search?q=${encodeURIComponent(query)}` : "/search",
+    index: !query,
+  });
+}
 
 export default async function SearchPage({
   searchParams,

@@ -2,10 +2,13 @@ import { FolderOpen } from "lucide-react";
 import Link from "next/link";
 
 import { api } from "@/lib/api";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: "Categories",
-};
+  description: "Browse MYTHH claims by topic — health, history, science, folklore, and more.",
+  path: "/categories",
+});
 
 export default async function CategoriesPage() {
   const { categories } = await api.categories();

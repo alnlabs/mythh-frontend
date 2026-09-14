@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { DisableNativeValidation } from "@/components/disable-native-validation";
 import { SiteDisclaimer } from "@/components/disclaimer";
 import { SiteHeader } from "@/components/site-header";
+import { SITE_DESCRIPTION, SITE_TITLE, siteUrl } from "@/lib/seo";
 
 import "./globals.css";
 
@@ -17,20 +18,6 @@ const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
 });
-
-const SITE_TITLE = "MYTHH — or truth?";
-const SITE_DESCRIPTION =
-  "Swipe through popular claims, choose Fact or Myth, and read a short AI write-up. For curiosity, not professional advice.";
-
-function siteUrl() {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (configured) return new URL(configured);
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return new URL(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
-  }
-  if (process.env.VERCEL_URL) return new URL(`https://${process.env.VERCEL_URL}`);
-  return new URL("http://localhost:3000");
-}
 
 export const metadata: Metadata = {
   metadataBase: siteUrl(),
