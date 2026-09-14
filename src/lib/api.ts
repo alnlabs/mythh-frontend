@@ -77,9 +77,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-export function googleLoginUrl(next = "/") {
+export function googleLoginUrl(next = "/", origin = "") {
   const path = next.startsWith("/") && !next.startsWith("//") ? next : "/";
-  return `${API_URL}/auth/google?next=${encodeURIComponent(path)}`;
+  const params = new URLSearchParams({ next: path });
+  if (origin) params.set("origin", origin);
+  return `${API_URL}/auth/google?${params.toString()}`;
 }
 
 export const api = {

@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           params.delete("auth");
           const query = params.toString();
           const next = `${window.location.pathname}${query ? `?${query}` : ""}`;
-          window.location.href = googleLoginUrl(next);
+          window.location.href = googleLoginUrl(next, window.location.origin);
         },
         logout,
       }}
