@@ -266,6 +266,7 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
             history.filter((item) => item.kind === "myth").length + 1
           }
           guess={guess}
+          showStats={Boolean(guess && me?.profile)}
           onVote={vote}
           onComments={() => setCommentsOpen(true)}
           onShare={() => {
@@ -298,6 +299,7 @@ function MythSlide({
   myth,
   number,
   guess,
+  showStats,
   onVote,
   onComments,
   onShare,
@@ -305,6 +307,7 @@ function MythSlide({
   myth: Myth;
   number: number;
   guess: "TRUE" | "FALSE" | null;
+  showStats: boolean;
   onVote: (value: "TRUE" | "FALSE") => void;
   onComments: () => void;
   onShare: () => void;
@@ -338,18 +341,22 @@ function MythSlide({
             onClick={() => onVote("TRUE")}
           />
         </div>
+        {showStats && (
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-[var(--muted)]">
+            <span className="inline-flex items-center gap-1.5">
+              <X className="size-4 text-[var(--false)]" />
+              Myth {myth.stats.falsePercent}%
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Check className="size-4 text-[var(--true)]" />
+              Fact {myth.stats.truePercent}%
+            </span>
+          </div>
+        )}
       </div>
 
       <footer className="mt-6 flex w-full max-w-5xl flex-col items-center gap-4">
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-[var(--muted)]">
-          <span className="inline-flex items-center gap-1.5">
-            <X className="size-4 text-[var(--false)]" />
-            Myth {myth.stats.falsePercent}%
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Check className="size-4 text-[var(--true)]" />
-            Fact {myth.stats.truePercent}%
-          </span>
           <button
             type="button"
             onClick={onComments}
