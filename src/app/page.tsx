@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { api } from "@/lib/api";
@@ -7,11 +8,32 @@ import { requestCountry } from "@/lib/request-country";
 
 export const dynamic = "force-dynamic";
 
+function isShareCrawler(userAgent: string) {
+  return /facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Pinterest|iMessage|Googlebot|bingbot|Applebot/i.test(
+    userAgent,
+  );
+}
+
 export default async function HomePage({
   searchParams,
 }: {
   searchParams: Promise<{ auth?: string; country?: string; category?: string }>;
 }) {
+  const userAgent = (await headers()).get("user-agent") ?? "";
+  if (isShareCrawler(userAgent)) {
+    return (
+      <div className="page-shell">
+        <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--cream)]">
+          MYTHH — or truth?
+        </h1>
+        <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
+          Swipe through popular claims, choose Fact or Myth, and read a short AI write-up. For
+          curiosity, not professional advice.
+        </p>
+      </div>
+    );
+  }
+
   const { auth, country: countryQuery, category: categoryQuery } = await searchParams;
   const country = await requestCountry(countryQuery);
   const category = await requestCategory(categoryQuery);

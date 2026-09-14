@@ -18,14 +18,44 @@ const fraunces = Fraunces({
   subsets: ["latin"],
 });
 
+const SITE_TITLE = "MYTHH — or truth?";
+const SITE_DESCRIPTION =
+  "Swipe through popular claims, choose Fact or Myth, and read a short AI write-up. For curiosity, not professional advice.";
+
+function siteUrl() {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) return new URL(configured);
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return new URL(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+  }
+  if (process.env.VERCEL_URL) return new URL(`https://${process.env.VERCEL_URL}`);
+  return new URL("http://localhost:3000");
+}
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl(),
   title: {
-    default: "MYTHH — or truth?",
+    default: SITE_TITLE,
     template: "%s · MYTHH",
   },
-  description:
-    "Swipe through popular claims, choose Fact or Myth, and read a short AI write-up. For curiosity, not professional advice.",
-  metadataBase: new URL("http://localhost:3000"),
+  description: SITE_DESCRIPTION,
+  applicationName: "MYTHH",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    url: "/",
+    siteName: "MYTHH",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
