@@ -27,7 +27,7 @@ const steps = [
   },
   {
     title: "Call Myth or Fact",
-    body: "Pick Myth or Fact. The crowd split shows after you answer. Sign in only if you want to comment.",
+    body: "Pick Myth or Fact. The crowd split is on the claim, and your choice is marked after you answer. Sign in only if you want to comment.",
   },
   {
     title: "Talk it through",

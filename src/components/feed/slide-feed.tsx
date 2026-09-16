@@ -30,6 +30,7 @@ import { countryName } from "@/lib/country";
 import type { Advertisement, FeedItem, Myth } from "@/lib/types";
 
 const WINDOW = 5;
+const STATS_POLL_MS = 4000;
 
 function startItem(items: FeedItem[]) {
   return items.find((item) => item.kind === "myth") ?? items[0] ?? null;
@@ -249,27 +250,6 @@ export function SlideFeed({
     indexRef.current = 0;
     if (first?.kind === "myth") rememberSeenMyth(first.myth.id);
     requestAnimationFrame(() => paint(0, false));
-
-    if (first?.kind === "myth") {
-      const slug = first.myth.slug;
-      const mythId = first.myth.id;
-      let cancelled = false;
-      void api
-        .myth(slug)
-        .then(({ myth }) => {
-          if (cancelled || pendingVotesRef.current.has(mythId)) return;
-          if (myth.myVote) rememberMyVote(myth.id, myth.myVote);
-          setDeck((now) => mergeMyth(now, myth));
-          const currentItem = deckRef.current[indexRef.current];
-          if (currentItem?.kind === "myth" && currentItem.myth.id === myth.id) {
-            setGuess(voteForMyth(myth));
-          }
-        })
-        .catch(() => undefined);
-      return () => {
-        cancelled = true;
-      };
-    }
     // Rebuild when the opened claim or country/category filter changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionKey is the filter/start contract
   }, [sessionKey]);
@@ -281,6 +261,52 @@ export function SlideFeed({
     window.history.replaceState(window.history.state, "", next);
     document.title = `${myth.title} · Myth`;
   }, [myth]);
+
+  useEffect(() => {
+    if (!myth) return;
+    const slug = myth.slug;
+    const mythId = myth.id;
+    let cancelled = false;
+    let inFlight = false;
+
+    function applyRemote(next: Myth) {
+      if (cancelled || pendingVotesRef.current.has(next.id)) return;
+      if (next.myVote) rememberMyVote(next.id, next.myVote);
+      setDeck((now) => mergeMyth(now, next));
+      const shown = deckRef.current[indexRef.current];
+      if (shown?.kind === "myth" && shown.myth.id === next.id) {
+        setGuess(voteForMyth(next));
+      }
+    }
+
+    function refresh() {
+      if (cancelled || inFlight) return;
+      if (document.visibilityState !== "visible") return;
+      if (pendingVotesRef.current.has(mythId)) return;
+      inFlight = true;
+      void api
+        .myth(slug)
+        .then(({ myth: next }) => applyRemote(next))
+        .catch(() => undefined)
+        .finally(() => {
+          inFlight = false;
+        });
+    }
+
+    refresh();
+    const interval = window.setInterval(refresh, STATS_POLL_MS);
+    function onVisible() {
+      if (document.visibilityState === "visible") refresh();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [myth?.id, myth?.slug]);
 
   const settlePending = useCallback(() => {
     if (pendingTarget.current < 0) return;
@@ -567,7 +593,11 @@ export function SlideFeed({
               number={slot + 1}
               active={slot === index}
               guess={slot === index ? guess : null}
-              showStats={slot === index && Boolean(guess)}
+              showStats={
+                slot === index &&
+                item.kind === "myth" &&
+                (Boolean(guess) || item.myth.stats.responseCount > 0)
+              }
               onVote={vote}
               onComments={() => setCommentsOpen(true)}
               onShare={() => {
