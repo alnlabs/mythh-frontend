@@ -5,6 +5,7 @@ import type {
   MeResponse,
   Myth,
   Profile,
+  RelatedMyth,
 } from "./types";
 import { ANONYMOUS_HEADER, anonymousIdForRequest, persistAnonymousId } from "./anonymous-id";
 
@@ -115,6 +116,8 @@ export const api = {
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   myths: (query = "") => request<{ myths: Myth[] }>(`/myths${query}`),
   pickMyth: (query = "") => request<{ slug: string }>(`/myths/random${query}`),
+  relatedMyths: (q: string) =>
+    request<{ myths: RelatedMyth[] }>(`/myths/related?limit=5&q=${encodeURIComponent(q)}`),
   myth: (idOrSlug: string) => request<{ myth: Myth }>(`/myths/${idOrSlug}`),
   comments: (idOrSlug: string) =>
     request<{ comments: Comment[] }>(`/myths/${idOrSlug}/comments`),

@@ -26,6 +26,14 @@ export type Myth = {
   myVote: "TRUE" | "FALSE" | null;
 };
 
+export type RelatedMyth = {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  category: { id: string; name: string; slug: string } | null;
+};
+
 export type Category = {
   id: string;
   name: string;
