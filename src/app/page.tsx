@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { MythMark } from "@/components/myth-mark";
 import { api } from "@/lib/api";
 import { shuffle } from "@/lib/feed";
 import { requestCategory } from "@/lib/request-category";
@@ -33,6 +34,7 @@ export default async function HomePage({
   if (isShareCrawler(userAgent)) {
     return (
       <div className="page-shell">
+        <MythMark className="mb-6 size-14 text-[var(--gold)]" />
         <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--cream)]">
           Myth — or truth?
         </h1>

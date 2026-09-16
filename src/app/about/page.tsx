@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 
 import { DisclaimerSection } from "@/components/disclaimer";
+import { MythMark } from "@/components/myth-mark";
 import { SITE_HOST, pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
@@ -61,7 +62,7 @@ export default function AboutPage() {
   return (
     <div className="page-shell">
       <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-[var(--gold)]">
-        <Sparkles className="size-3.5" />
+        <MythMark className="size-4" />
         About
       </p>
       <h1 className="mt-4 max-w-5xl font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--cream)] md:text-6xl xl:text-7xl">

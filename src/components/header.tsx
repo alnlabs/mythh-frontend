@@ -9,7 +9,6 @@ import {
   PenLine,
   Search,
   Shield,
-  Sparkles,
   UserRound,
   X,
 } from "lucide-react";
@@ -21,23 +20,8 @@ import { Avatar } from "./avatar";
 import { useAuth } from "./auth-provider";
 import { CategorySwitch } from "./category-switch";
 import { CountrySwitch } from "./country-switch";
+import { BrandLockup } from "./myth-mark";
 import { ThemeToggle } from "./theme-toggle";
-
-function BrandMark() {
-  return (
-    <Link href="/" className="flex min-w-0 items-center gap-1.5">
-      <Sparkles className="size-4 shrink-0 text-[var(--gold)] sm:size-5" />
-      <span className="min-w-0 leading-tight">
-        <span className="block font-[family-name:var(--font-display)] text-[1.15rem] leading-none tracking-tight text-[var(--cream)] sm:text-2xl">
-          Myth
-        </span>
-        <span className="mt-0.5 block font-[family-name:var(--font-display)] text-[0.7rem] leading-none text-[var(--gold)] max-[359px]:hidden sm:text-sm">
-          or truth?
-        </span>
-      </span>
-    </Link>
-  );
-}
 
 const links = [
   { href: "/categories", label: "Categories", icon: FolderOpen },
@@ -63,44 +47,42 @@ export function Header({ country, category }: { country: string; category: strin
 
   return (
     <header className="sticky top-0 z-40 w-full max-w-full overflow-x-hidden border-b border-[var(--line)] bg-[color:var(--ink)]/92 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md">
-      <div className="flex w-full min-w-0 items-center gap-1.5 px-2 py-2 sm:gap-3 sm:px-4 lg:px-8">
-        <div className="min-w-0 shrink-0">
-          <BrandMark />
+      <div className="grid w-full min-w-0 grid-cols-[auto_1fr_auto] items-center gap-1.5 overflow-hidden px-2 py-2 sm:gap-3 sm:px-4 lg:px-8">
+        <div className="min-w-0">
+          <BrandLockup />
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden sm:max-w-md sm:gap-2">
-          <div className="min-w-0 flex-1 basis-0">
+        <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden sm:gap-2">
+          <div className="min-w-0 flex-1 basis-0 sm:max-w-xs">
             <CategorySwitch value={category} compact />
           </div>
-          <div className="min-w-0 flex-1 basis-0">
+          <div className="min-w-0 flex-1 basis-0 sm:max-w-xs">
             <CountrySwitch value={country} compact />
           </div>
+          <nav className="hidden min-w-0 shrink-0 items-center gap-4 text-sm text-[var(--muted)] xl:flex">
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="inline-flex items-center gap-1.5 hover:text-[var(--cream)]"
+              >
+                <link.icon className="size-4" />
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <form noValidate onSubmit={onSearch} className="relative hidden min-w-0 max-w-xs flex-1 lg:block lg:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search myths"
+              className="w-full min-w-0 rounded-full border border-[var(--line)] bg-[var(--ink-soft)] py-2 pr-4 pl-10 text-sm text-[var(--cream)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--gold)]"
+            />
+          </form>
         </div>
 
-        <nav className="hidden min-w-0 shrink-0 items-center gap-4 text-sm text-[var(--muted)] xl:flex">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="inline-flex items-center gap-1.5 hover:text-[var(--cream)]"
-            >
-              <link.icon className="size-4" />
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <form noValidate onSubmit={onSearch} className="relative hidden min-w-0 max-w-xs flex-1 lg:block lg:max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search myths"
-            className="w-full min-w-0 rounded-full border border-[var(--line)] bg-[var(--ink-soft)] py-2 pr-4 pl-10 text-sm text-[var(--cream)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--gold)]"
-          />
-        </form>
-
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <ThemeToggle />
           {signedIn ? (
             <>
@@ -140,7 +122,7 @@ export function Header({ country, category }: { country: string; category: strin
             <button
               type="button"
               onClick={login}
-              className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[var(--gold)] px-2.5 py-1 text-[11px] font-medium text-[var(--on-gold)] sm:px-4 sm:py-2 sm:text-sm"
+              className="hidden shrink-0 items-center whitespace-nowrap rounded-full bg-[var(--gold)] px-2.5 py-1 text-[11px] font-medium text-[var(--on-gold)] sm:inline-flex sm:px-4 sm:py-2 sm:text-sm"
             >
               <LogIn className="mr-1 hidden size-4 sm:inline" />
               Sign in

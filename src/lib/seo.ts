@@ -69,7 +69,7 @@ export function pageMetadata({
         : {}),
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: shareTitle,
       description: summary,
     },
