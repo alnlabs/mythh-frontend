@@ -27,6 +27,17 @@ export function rememberMyVote(mythId: string, value: "TRUE" | "FALSE") {
   }
 }
 
+export function forgetMyVote(mythId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const next = { ...readMyVotes() };
+    delete next[mythId];
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    /* private mode */
+  }
+}
+
 export function voteForMyth(myth: Pick<Myth, "id" | "myVote">) {
   return myth.myVote ?? readMyVotes()[myth.id] ?? null;
 }

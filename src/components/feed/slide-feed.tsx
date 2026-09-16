@@ -17,14 +17,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useAuth } from "@/components/auth-provider";
 import { CommentsPanel } from "@/components/comments-panel";
 import { ShareSheet } from "@/components/feed/share-sheet";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import {
   pickNextMyth,
   pickRandomAd,
   rememberSeenMyth,
   shouldShowAd,
 } from "@/lib/feed";
-import { voteForMyth, rememberMyVote, readMyVotes } from "@/lib/my-votes";
+import { voteForMyth, rememberMyVote, forgetMyVote, readMyVotes } from "@/lib/my-votes";
 import { openNativeShare } from "@/lib/share-card";
 import { countryName } from "@/lib/country";
 import type { Advertisement, FeedItem, Myth } from "@/lib/types";
@@ -72,6 +72,40 @@ function mergeMyth(deck: FeedItem[], myth: Myth): FeedItem[] {
   return deck.map((item) =>
     item.kind === "myth" && item.myth.id === next.id ? { kind: "myth", myth: next } : item,
   );
+}
+
+function applyVoteToMyth(myth: Myth, value: "TRUE" | "FALSE", signedIn: boolean): Myth {
+  const previous = myth.myVote;
+  if (previous === value) return { ...myth, myVote: value };
+
+  let trueCount = myth.stats.trueCount;
+  let falseCount = myth.stats.falseCount;
+  let authenticatedCount = myth.stats.authenticatedCount;
+  let anonymousCount = myth.stats.anonymousCount;
+
+  if (previous === "TRUE") trueCount = Math.max(0, trueCount - 1);
+  else if (previous === "FALSE") falseCount = Math.max(0, falseCount - 1);
+  else if (signedIn) authenticatedCount += 1;
+  else anonymousCount += 1;
+
+  if (value === "TRUE") trueCount += 1;
+  else falseCount += 1;
+
+  const responseCount = trueCount + falseCount;
+  return {
+    ...myth,
+    myVote: value,
+    stats: {
+      ...myth.stats,
+      trueCount,
+      falseCount,
+      authenticatedCount,
+      anonymousCount,
+      responseCount,
+      truePercent: responseCount === 0 ? 0 : Math.round((trueCount / responseCount) * 100),
+      falsePercent: responseCount === 0 ? 0 : Math.round((falseCount / responseCount) * 100),
+    },
+  };
 }
 
 function pickAhead(
@@ -168,6 +202,7 @@ export function SlideFeed({
   const offsetRef = useRef(0);
   const heightRef = useRef(0);
   const deckRef = useRef(deck);
+  const pendingVotesRef = useRef(new Map<string, { generation: number; previous: Myth }>());
   const startId = startMyth(items)?.id ?? "";
   const sessionKey = `${filterKey}::${startId}`;
   const current = deck[index] ?? null;
@@ -217,11 +252,12 @@ export function SlideFeed({
 
     if (first?.kind === "myth") {
       const slug = first.myth.slug;
+      const mythId = first.myth.id;
       let cancelled = false;
       void api
         .myth(slug)
         .then(({ myth }) => {
-          if (cancelled) return;
+          if (cancelled || pendingVotesRef.current.has(mythId)) return;
           if (myth.myVote) rememberMyVote(myth.id, myth.myVote);
           setDeck((now) => mergeMyth(now, myth));
           const currentItem = deckRef.current[indexRef.current];
@@ -313,24 +349,49 @@ export function SlideFeed({
   );
 
   const vote = useCallback(
-    async (value: "TRUE" | "FALSE") => {
-      if (!myth) return;
-      if (guess === value) return;
-      if (guess && !me?.profile) return;
+    (value: "TRUE" | "FALSE") => {
+      const currentItem = deckRef.current[indexRef.current];
+      const live = currentItem?.kind === "myth" ? currentItem.myth : null;
+      if (!live) return;
+      if (live.myVote === value) return;
+      if (live.myVote && !me?.profile) return;
 
+      const signedIn = Boolean(me?.profile);
+      const previous = live;
+      const generation = (pendingVotesRef.current.get(live.id)?.generation ?? 0) + 1;
+      const optimistic = applyVoteToMyth(live, value, signedIn);
+      pendingVotesRef.current.set(live.id, { generation, previous });
+      rememberMyVote(live.id, value);
       setGuess(value);
+      setDeck((now) => mergeMyth(now, optimistic));
 
-      try {
-        const result = await api.vote(myth.slug, value);
-        rememberMyVote(result.myth.id, result.vote.value);
-        setGuess(result.vote.value);
-        setDeck((now) => mergeMyth(now, result.myth));
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 429) return;
-        setGuess(voteForMyth(myth));
-      }
+      void api
+        .vote(live.slug, value)
+        .then((result) => {
+          const pending = pendingVotesRef.current.get(live.id);
+          if (pending?.generation !== generation) return;
+          pendingVotesRef.current.delete(live.id);
+          rememberMyVote(result.myth.id, result.vote.value);
+          setDeck((now) => mergeMyth(now, result.myth));
+          const shown = deckRef.current[indexRef.current];
+          if (shown?.kind === "myth" && shown.myth.id === result.myth.id) {
+            setGuess(result.vote.value);
+          }
+        })
+        .catch(() => {
+          const pending = pendingVotesRef.current.get(live.id);
+          if (pending?.generation !== generation) return;
+          pendingVotesRef.current.delete(live.id);
+          if (previous.myVote) rememberMyVote(previous.id, previous.myVote);
+          else forgetMyVote(previous.id);
+          setDeck((now) => mergeMyth(now, previous));
+          const shown = deckRef.current[indexRef.current];
+          if (shown?.kind === "myth" && shown.myth.id === previous.id) {
+            setGuess(previous.myVote);
+          }
+        });
     },
-    [guess, me?.profile, myth],
+    [me?.profile],
   );
 
   useEffect(() => {
