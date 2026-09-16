@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import { SlideFeed } from "@/components/feed/slide-feed";
 import { api } from "@/lib/api";
-import { buildMythFeed } from "@/lib/feed";
 import { requestCategory } from "@/lib/request-category";
 import { requestCountry } from "@/lib/request-country";
 import { clipDescription, pageMetadata } from "@/lib/seo";
@@ -17,18 +17,18 @@ type Props = {
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
 
-async function loadMyth(slug: string): Promise<Myth | null> {
+const loadMyth = cache(async (slug: string): Promise<Myth | null> => {
   try {
     const { myth } = await api.myth(slug);
     return myth;
   } catch {
     return null;
   }
-}
+});
 
 export async function generateStaticParams() {
   try {
-    const { myths } = await api.myths("?limit=200");
+    const { myths } = await api.myths("?limit=40");
     return myths.map((myth) => ({ slug: myth.slug }));
   } catch {
     return [];
@@ -59,14 +59,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function MythPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { country: countryQuery, category: categoryQuery } = await searchParams;
-  const country = await requestCountry(countryQuery);
-  const category = await requestCategory(categoryQuery);
-  const feedQuery = new URLSearchParams({ limit: "200", country });
-  if (category) feedQuery.set("category", category);
-  const [myth, mythsResult, adsResult] = await Promise.all([
+  const [myth, country, category] = await Promise.all([
     loadMyth(slug),
-    api.myths(`?${feedQuery.toString()}`).catch(() => ({ myths: [] })),
-    api.advertisements().catch(() => ({ advertisements: [] })),
+    requestCountry(countryQuery),
+    requestCategory(categoryQuery),
   ]);
   if (!myth) notFound();
 
@@ -92,8 +88,10 @@ export default async function MythPage({ params, searchParams }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <SlideFeed
-        items={buildMythFeed(myth, mythsResult.myths, adsResult.advertisements)}
+        items={[{ kind: "myth", myth }]}
         filterKey={`${country}:${category ?? "all"}`}
+        country={country}
+        category={category ?? "all"}
       />
     </>
   );

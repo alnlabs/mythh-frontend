@@ -114,6 +114,7 @@ export const api = {
     }>("/me/myths"),
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   myths: (query = "") => request<{ myths: Myth[] }>(`/myths${query}`),
+  pickMyth: (query = "") => request<{ slug: string }>(`/myths/random${query}`),
   myth: (idOrSlug: string) => request<{ myth: Myth }>(`/myths/${idOrSlug}`),
   comments: (idOrSlug: string) =>
     request<{ comments: Comment[] }>(`/myths/${idOrSlug}/comments`),

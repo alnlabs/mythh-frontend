@@ -31,6 +31,25 @@ import type { Advertisement, FeedItem, Myth } from "@/lib/types";
 
 const WINDOW = 5;
 const STATS_POLL_MS = 4000;
+const FEED_PAGE_SIZE = 40;
+
+function uniqueMyths(items: Myth[]) {
+  const seen = new Set<string>();
+  return items.filter((myth) => {
+    if (seen.has(myth.id)) return false;
+    seen.add(myth.id);
+    return true;
+  });
+}
+
+function uniqueAds(items: Advertisement[]) {
+  const seen = new Set<string>();
+  return items.filter((ad) => {
+    if (seen.has(ad.id)) return false;
+    seen.add(ad.id);
+    return true;
+  });
+}
 
 function startItem(items: FeedItem[]) {
   return items.find((item) => item.kind === "myth") ?? items[0] ?? null;
@@ -165,19 +184,27 @@ function initialDeck(items: FeedItem[]) {
 export function SlideFeed({
   items,
   filterKey = "all",
+  country,
+  category = "all",
 }: {
   items: FeedItem[];
   filterKey?: string;
+  country?: string;
+  category?: string;
 }) {
   const { me } = useAuth();
-  const myths = useMemo(
+  const seedMyths = useMemo(
     () => items.filter((item): item is Extract<FeedItem, { kind: "myth" }> => item.kind === "myth").map((item) => item.myth),
     [items],
   );
-  const ads = useMemo(
+  const seedAds = useMemo(
     () => items.filter((item): item is Extract<FeedItem, { kind: "ad" }> => item.kind === "ad").map((item) => item.ad),
     [items],
   );
+  const [moreMyths, setMoreMyths] = useState<Myth[]>([]);
+  const [moreAds, setMoreAds] = useState<Advertisement[]>([]);
+  const myths = useMemo(() => uniqueMyths([...seedMyths, ...moreMyths]), [seedMyths, moreMyths]);
+  const ads = useMemo(() => uniqueAds([...seedAds, ...moreAds]), [seedAds, moreAds]);
   const [deck, setDeck] = useState<FeedItem[]>(() => initialDeck(items));
   const [index, setIndex] = useState(0);
   const [guess, setGuess] = useState<"TRUE" | "FALSE" | null>(
@@ -240,8 +267,10 @@ export function SlideFeed({
   }, []);
 
   useEffect(() => {
-    const nextDeck = fillWindow(withSavedVotes(initialDeck(items)), 0, myths, ads);
+    const nextDeck = withSavedVotes(initialDeck(items));
     const first = nextDeck[0];
+    setMoreMyths([]);
+    setMoreAds([]);
     setDeck(nextDeck);
     setIndex(0);
     setGuess(first?.kind === "myth" ? voteForMyth(first.myth) : null);
@@ -253,6 +282,29 @@ export function SlideFeed({
     // Rebuild when the opened claim or country/category filter changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionKey is the filter/start contract
   }, [sessionKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const query = new URLSearchParams({ limit: String(FEED_PAGE_SIZE) });
+    if (country) query.set("country", country);
+    if (category && category !== "all") query.set("category", category);
+    void Promise.all([
+      api.myths(`?${query.toString()}`).catch(() => ({ myths: [] as Myth[] })),
+      api.advertisements().catch(() => ({ advertisements: [] as Advertisement[] })),
+    ]).then(([{ myths: nextMyths }, { advertisements }]) => {
+      if (cancelled) return;
+      const pool = uniqueMyths([...seedMyths, ...nextMyths]);
+      const adPool = uniqueAds([...seedAds, ...advertisements]);
+      setMoreMyths(nextMyths);
+      setMoreAds(advertisements);
+      setDeck((now) => fillWindow(now, indexRef.current, pool, adPool));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // seed lists belong to this opened claim; sessionKey already reties them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionKey, country, category]);
 
   useEffect(() => {
     if (!myth) return;
