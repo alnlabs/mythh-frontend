@@ -24,6 +24,7 @@ import {
   rememberSeenMyth,
   shouldShowAd,
 } from "@/lib/feed";
+import { voteForMyth, rememberMyVote, readMyVotes } from "@/lib/my-votes";
 import { openNativeShare } from "@/lib/share-card";
 import { countryName } from "@/lib/country";
 import type { Advertisement, FeedItem, Myth } from "@/lib/types";
@@ -52,6 +53,27 @@ function lastMythIn(deck: FeedItem[]) {
   return null;
 }
 
+function withSavedVote(myth: Myth): Myth {
+  const saved = voteForMyth(myth);
+  return saved && myth.myVote !== saved ? { ...myth, myVote: saved } : myth;
+}
+
+function withSavedVotes(items: FeedItem[]): FeedItem[] {
+  const saved = readMyVotes();
+  return items.map((item) => {
+    if (item.kind !== "myth" || item.myth.myVote) return item;
+    const value = saved[item.myth.id];
+    return value ? { kind: "myth", myth: { ...item.myth, myVote: value } } : item;
+  });
+}
+
+function mergeMyth(deck: FeedItem[], myth: Myth): FeedItem[] {
+  const next = withSavedVote(myth);
+  return deck.map((item) =>
+    item.kind === "myth" && item.myth.id === next.id ? { kind: "myth", myth: next } : item,
+  );
+}
+
 function pickAhead(
   deck: FeedItem[],
   myths: Myth[],
@@ -72,7 +94,7 @@ function pickAhead(
     }
     if (!candidate) {
       const nextMyth = pickNextMyth(myths, now.kind === "myth" ? now.myth : last, seen);
-      if (nextMyth) candidate = { kind: "myth", myth: nextMyth };
+      if (nextMyth) candidate = { kind: "myth", myth: withSavedVote(nextMyth) };
     }
     if (!candidate) return null;
     if (!used.has(itemKey(candidate))) return candidate;
@@ -80,7 +102,7 @@ function pickAhead(
   }
 
   const unused = myths.find((myth) => !used.has(myth.id));
-  return unused ? { kind: "myth", myth: unused } : null;
+  return unused ? { kind: "myth", myth: withSavedVote(unused) } : null;
 }
 
 function fillWindow(
@@ -111,7 +133,7 @@ export function SlideFeed({
   items: FeedItem[];
   filterKey?: string;
 }) {
-  const { me, loading } = useAuth();
+  const { me } = useAuth();
   const myths = useMemo(
     () => items.filter((item): item is Extract<FeedItem, { kind: "myth" }> => item.kind === "myth").map((item) => item.myth),
     [items],
@@ -181,16 +203,36 @@ export function SlideFeed({
   }, []);
 
   useEffect(() => {
-    const nextDeck = buildDeck(items, myths, ads);
+    const nextDeck = withSavedVotes(buildDeck(items, myths, ads));
     const first = nextDeck[0];
     setDeck(nextDeck);
     setIndex(0);
-    setGuess(first?.kind === "myth" ? first.myth.myVote : null);
+    setGuess(first?.kind === "myth" ? voteForMyth(first.myth) : null);
     setCommentsOpen(false);
     setShareOpen(false);
     indexRef.current = 0;
     if (first?.kind === "myth") rememberSeenMyth(first.myth.id);
     requestAnimationFrame(() => paint(0, false));
+
+    if (first?.kind === "myth") {
+      const slug = first.myth.slug;
+      let cancelled = false;
+      void api
+        .myth(slug)
+        .then(({ myth }) => {
+          if (cancelled) return;
+          if (myth.myVote) rememberMyVote(myth.id, myth.myVote);
+          setDeck((now) => mergeMyth(now, myth));
+          const currentItem = deckRef.current[indexRef.current];
+          if (currentItem?.kind === "myth" && currentItem.myth.id === myth.id) {
+            setGuess(voteForMyth(myth));
+          }
+        })
+        .catch(() => undefined);
+      return () => {
+        cancelled = true;
+      };
+    }
     // Rebuild when the opened claim or country/category filter changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionKey is the filter/start contract
   }, [sessionKey]);
@@ -213,7 +255,7 @@ export function SlideFeed({
     setDeck(filled);
     setIndex(target);
     const landed = filled[target];
-    setGuess(landed?.kind === "myth" ? landed.myth.myVote : null);
+    setGuess(landed?.kind === "myth" ? voteForMyth(landed.myth) : null);
     setCommentsOpen(false);
     setShareOpen(false);
     const item = filled[target];
@@ -252,7 +294,7 @@ export function SlideFeed({
       setDeck(filled);
       setIndex(target);
       const landed = filled[target];
-      setGuess(landed?.kind === "myth" ? landed.myth.myVote : null);
+      setGuess(landed?.kind === "myth" ? voteForMyth(landed.myth) : null);
       setCommentsOpen(false);
       setShareOpen(false);
       const item = filled[target];
@@ -271,7 +313,7 @@ export function SlideFeed({
 
   const vote = useCallback(
     async (value: "TRUE" | "FALSE") => {
-      if (!myth || loading) return;
+      if (!myth) return;
       if (guess === value) return;
       if (guess && !me?.profile) return;
 
@@ -279,18 +321,15 @@ export function SlideFeed({
 
       try {
         const result = await api.vote(myth.slug, value);
+        rememberMyVote(result.myth.id, result.vote.value);
         setGuess(result.vote.value);
-        setDeck((now) =>
-          now.map((item) =>
-            item.kind === "myth" && item.myth.id === result.myth.id ? { kind: "myth", myth: result.myth } : item,
-          ),
-        );
+        setDeck((now) => mergeMyth(now, result.myth));
       } catch (error) {
         if (error instanceof ApiError && error.status === 429) return;
-        setGuess(myth.myVote ?? null);
+        setGuess(voteForMyth(myth));
       }
     },
-    [guess, loading, me?.profile, myth],
+    [guess, me?.profile, myth],
   );
 
   useEffect(() => {

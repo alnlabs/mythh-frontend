@@ -6,6 +6,7 @@ import type {
   Myth,
   Profile,
 } from "./types";
+import { ANONYMOUS_HEADER, anonymousIdForRequest, persistAnonymousId } from "./anonymous-id";
 
 const LOCAL_API_URL = "http://localhost:3001/api/v1";
 const PRODUCTION_API_URL = "https://api.mythh.in/api/v1";
@@ -50,6 +51,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (init?.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
+  const anonymousId = await anonymousIdForRequest();
+  if (anonymousId) headers.set(ANONYMOUS_HEADER, anonymousId);
 
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -57,6 +60,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     credentials: "include",
     cache: init?.cache ?? "no-store",
   });
+
+  const returnedId = response.headers.get(ANONYMOUS_HEADER);
+  if (returnedId) persistAnonymousId(returnedId);
 
   if (response.status === 204) {
     return undefined as T;
