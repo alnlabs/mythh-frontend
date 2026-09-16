@@ -111,7 +111,7 @@ export function SlideFeed({
   items: FeedItem[];
   filterKey?: string;
 }) {
-  const { me, login, loading } = useAuth();
+  const { me, loading } = useAuth();
   const myths = useMemo(
     () => items.filter((item): item is Extract<FeedItem, { kind: "myth" }> => item.kind === "myth").map((item) => item.myth),
     [items],
@@ -122,7 +122,9 @@ export function SlideFeed({
   );
   const [deck, setDeck] = useState<FeedItem[]>(() => buildDeck(items, myths, ads));
   const [index, setIndex] = useState(0);
-  const [guess, setGuess] = useState<"TRUE" | "FALSE" | null>(null);
+  const [guess, setGuess] = useState<"TRUE" | "FALSE" | null>(
+    () => startMyth(items)?.myVote ?? null,
+  );
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [lastWheel, setLastWheel] = useState(0);
@@ -180,13 +182,13 @@ export function SlideFeed({
 
   useEffect(() => {
     const nextDeck = buildDeck(items, myths, ads);
+    const first = nextDeck[0];
     setDeck(nextDeck);
     setIndex(0);
-    setGuess(null);
+    setGuess(first?.kind === "myth" ? first.myth.myVote : null);
     setCommentsOpen(false);
     setShareOpen(false);
     indexRef.current = 0;
-    const first = nextDeck[0];
     if (first?.kind === "myth") rememberSeenMyth(first.myth.id);
     requestAnimationFrame(() => paint(0, false));
     // Rebuild when the opened claim or country/category filter changes.
@@ -198,7 +200,7 @@ export function SlideFeed({
     const next = `/myths/${myth.slug}`;
     if (window.location.pathname === next) return;
     window.history.replaceState(window.history.state, "", next);
-    document.title = `${myth.title} · MYTHH`;
+    document.title = `${myth.title} · Myth`;
   }, [myth]);
 
   const settlePending = useCallback(() => {
@@ -210,7 +212,8 @@ export function SlideFeed({
     indexRef.current = target;
     setDeck(filled);
     setIndex(target);
-    setGuess(null);
+    const landed = filled[target];
+    setGuess(landed?.kind === "myth" ? landed.myth.myVote : null);
     setCommentsOpen(false);
     setShareOpen(false);
     const item = filled[target];
@@ -248,7 +251,8 @@ export function SlideFeed({
       indexRef.current = target;
       setDeck(filled);
       setIndex(target);
-      setGuess(null);
+      const landed = filled[target];
+      setGuess(landed?.kind === "myth" ? landed.myth.myVote : null);
       setCommentsOpen(false);
       setShareOpen(false);
       const item = filled[target];
@@ -267,30 +271,26 @@ export function SlideFeed({
 
   const vote = useCallback(
     async (value: "TRUE" | "FALSE") => {
-      if (!myth || guess === value || loading) return;
-
-      if (!me?.profile) {
-        login();
-        return;
-      }
+      if (!myth || loading) return;
+      if (guess === value) return;
+      if (guess && !me?.profile) return;
 
       setGuess(value);
 
       try {
-        await api.vote(myth.slug, value);
-        const next = await api.myth(myth.slug);
+        const result = await api.vote(myth.slug, value);
+        setGuess(result.vote.value);
         setDeck((now) =>
           now.map((item) =>
-            item.kind === "myth" && item.myth.id === next.myth.id ? { kind: "myth", myth: next.myth } : item,
+            item.kind === "myth" && item.myth.id === result.myth.id ? { kind: "myth", myth: result.myth } : item,
           ),
         );
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
-          login();
-        }
+        if (error instanceof ApiError && error.status === 429) return;
+        setGuess(myth.myVote ?? null);
       }
     },
-    [guess, loading, login, me?.profile, myth],
+    [guess, loading, me?.profile, myth],
   );
 
   useEffect(() => {
@@ -466,7 +466,7 @@ export function SlideFeed({
               number={slot + 1}
               active={slot === index}
               guess={slot === index ? guess : null}
-              showStats={slot === index && Boolean(guess && me?.profile)}
+              showStats={slot === index && Boolean(guess)}
               onVote={vote}
               onComments={() => setCommentsOpen(true)}
               onShare={() => {
@@ -591,6 +591,11 @@ function MythSlide({
             onClick={() => onVote("TRUE")}
           />
         </div>
+        {showStats && (
+          <p className="mt-4 text-sm text-[var(--muted)]">
+            Based on {myth.stats.responseCount.toLocaleString()} responses
+          </p>
+        )}
       </div>
 
       <footer className="mt-6 flex w-full max-w-5xl flex-col items-center gap-4">

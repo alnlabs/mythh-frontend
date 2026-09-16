@@ -28,7 +28,7 @@ function BrandMark() {
       <Sparkles className="size-4 shrink-0 text-[var(--gold)] sm:size-5" />
       <span className="min-w-0 leading-tight">
         <span className="block font-[family-name:var(--font-display)] text-[1.15rem] leading-none tracking-tight text-[var(--cream)] sm:text-2xl">
-          MYTHH
+          Myth
         </span>
         <span className="mt-0.5 block font-[family-name:var(--font-display)] text-[0.7rem] leading-none text-[var(--gold)] max-[359px]:hidden sm:text-sm">
           or truth?

@@ -29,7 +29,7 @@ export async function generateMetadata({
     title: data.category.name,
     description:
       data.category.description ??
-      `Popular ${data.category.name} claims on MYTHH. Choose Myth or Fact and see what people believe.`,
+      `Popular ${data.category.name} claims on Myth. Choose Myth or Fact and see what people believe.`,
     path: `/categories/${data.category.slug}`,
   });
 }

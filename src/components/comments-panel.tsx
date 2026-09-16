@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Send, X } from "lucide-react";
+import { LogIn, MessageCircle, Send, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
@@ -21,6 +21,7 @@ export function CommentsPanel({
   const [comments, setComments] = useState<Comment[]>([]);
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
+  const signedIn = Boolean(me?.profile);
 
   useEffect(() => {
     if (!open) return;
@@ -32,7 +33,7 @@ export function CommentsPanel({
 
   async function onSubmit(event?: FormEvent) {
     event?.preventDefault();
-    if (!me?.profile) {
+    if (!signedIn) {
       login();
       return;
     }
@@ -70,22 +71,36 @@ export function CommentsPanel({
         </button>
       </div>
 
-      <form noValidate onSubmit={onSubmit} className="mb-4 flex gap-2">
-        <input
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          placeholder={me?.profile ? "Add a thought" : "Sign in to comment"}
-          className="flex-1 rounded-full border border-[var(--line)] bg-[var(--ink)] px-4 py-2 text-sm text-[var(--cream)] outline-none"
-        />
-        <button
-          type="button"
-          onClick={onSubmit}
-          className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 text-sm text-[var(--ink)]"
-        >
-          <Send className="size-4" />
-          Post
-        </button>
-      </form>
+      {signedIn ? (
+        <form noValidate onSubmit={onSubmit} className="mb-4 flex gap-2">
+          <input
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            placeholder="Add a thought"
+            className="flex-1 rounded-full border border-[var(--line)] bg-[var(--ink)] px-4 py-2 text-sm text-[var(--cream)] outline-none"
+          />
+          <button
+            type="submit"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 text-sm text-[var(--ink)]"
+          >
+            <Send className="size-4" />
+            Post
+          </button>
+        </form>
+      ) : (
+        <div className="mb-4 rounded-2xl border border-[var(--line)] bg-[var(--ink)] px-4 py-4">
+          <p className="text-sm font-medium text-[var(--cream)]">Want to join the discussion?</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">Sign in to comment on this myth.</p>
+          <button
+            type="button"
+            onClick={login}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-4 py-2 text-sm text-[var(--ink)]"
+          >
+            <LogIn className="size-4" />
+            Sign in
+          </button>
+        </div>
+      )}
       {error && <p className="mb-3 text-sm text-[var(--false)]">{error}</p>}
 
       <ul className="space-y-3">

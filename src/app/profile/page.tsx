@@ -73,7 +73,7 @@ export default function ProfilePage() {
         </p>
         <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl">Profile</h1>
         <p className="mt-3 text-[var(--muted)]">
-          Sign in to vote Myth or Fact, comment, and submit claims.
+          Sign in to comment, submit claims, and keep your votes on this account.
         </p>
         <button
           type="button"
@@ -87,7 +87,7 @@ export default function ProfilePage() {
     );
   }
 
-  const name = me.profile.display_name ?? me.profile.email ?? "MYTHH member";
+  const name = me.profile.display_name ?? me.profile.email ?? "Myth member";
   const pending = submissions.filter((myth) => myth.status === "PENDING").length;
   const live = submissions.filter((myth) => myth.status === "APPROVED").length;
 

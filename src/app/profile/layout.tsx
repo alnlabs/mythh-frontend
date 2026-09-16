@@ -2,7 +2,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Profile",
-  description: "Your MYTHH votes, submissions, and saved country and topic defaults.",
+  description: "Your Myth votes, submissions, and saved country and topic defaults.",
   path: "/profile",
   index: false,
 });

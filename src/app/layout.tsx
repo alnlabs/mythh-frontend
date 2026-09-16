@@ -5,7 +5,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { DisableNativeValidation } from "@/components/disable-native-validation";
 import { SiteDisclaimer } from "@/components/disclaimer";
 import { SiteHeader } from "@/components/site-header";
-import { SITE_DESCRIPTION, SITE_TITLE, siteUrl } from "@/lib/seo";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteUrl } from "@/lib/seo";
 
 import "./globals.css";
 
@@ -29,10 +29,10 @@ export const metadata: Metadata = {
   metadataBase: siteUrl(),
   title: {
     default: SITE_TITLE,
-    template: "%s · MYTHH",
+    template: `%s · ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
-  applicationName: "MYTHH",
+  applicationName: SITE_NAME,
   alternates: {
     canonical: "/",
   },
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_IN",
     url: "/",
-    siteName: "MYTHH",
+    siteName: SITE_NAME,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },

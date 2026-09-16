@@ -18,8 +18,8 @@ export async function generateMetadata({
   return pageMetadata({
     title: query ? `Search “${query}”` : "Search",
     description: query
-      ? `Claims on MYTHH matching “${query}”. Choose Myth or Fact and read a short write-up.`
-      : "Search popular claims on MYTHH by title or topic.",
+      ? `Claims on Myth matching “${query}”. Choose Myth or Fact and read a short write-up.`
+      : "Search popular claims on Myth by title or topic.",
     path: query ? `/search?q=${encodeURIComponent(query)}` : "/search",
     index: !query,
   });

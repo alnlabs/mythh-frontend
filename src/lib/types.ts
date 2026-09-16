@@ -18,8 +18,12 @@ export type Myth = {
     falseCount: number;
     truePercent: number;
     falsePercent: number;
+    responseCount: number;
+    authenticatedCount: number;
+    anonymousCount: number;
     commentCount: number;
   };
+  myVote: "TRUE" | "FALSE" | null;
 };
 
 export type Category = {

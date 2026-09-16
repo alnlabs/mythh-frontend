@@ -10,12 +10,12 @@ import {
 import Link from "next/link";
 
 import { DisclaimerSection } from "@/components/disclaimer";
-import { pageMetadata } from "@/lib/seo";
+import { SITE_HOST, pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "About",
   description:
-    "MYTHH is a swipe-based way to meet popular claims, choose Myth or Fact, and learn in public.",
+    "Myth is a swipe-based way to meet popular claims, choose Myth or Fact, and learn in public.",
   path: "/about",
 });
 
@@ -26,7 +26,7 @@ const steps = [
   },
   {
     title: "Call Myth or Fact",
-    body: "Sign in to vote. You can change your mind later. The crowd split updates with you.",
+    body: "Pick Myth or Fact. The crowd split shows after you answer. Sign in only if you want to comment.",
   },
   {
     title: "Talk it through",
@@ -42,8 +42,8 @@ const values = [
   },
   {
     icon: ShieldCheck,
-    title: "Vote with a name",
-    body: "Sign in with Google to vote, comment, or submit. No password to remember.",
+    title: "Comment with a name",
+    body: "Browse and vote without an account. Sign in with Google to comment or submit. No password to remember.",
   },
   {
     icon: PenLine,
@@ -68,7 +68,7 @@ export default function AboutPage() {
         Guess the claim. Then see what people believe.
       </h1>
       <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)]">
-        MYTHH is a swipe stack of popular claims. Cards in the feed are AI-generated from public
+        Myth is a swipe stack of popular claims. Cards in the feed are AI-generated from public
         claims on the open internet. You pick <span className="text-[var(--cream)]">Myth</span> or{" "}
         <span className="text-[var(--cream)]">Fact</span>, watch the split, and keep going. Login is only for
         actions that change the record.
@@ -155,7 +155,7 @@ export default function AboutPage() {
 
       <DisclaimerSection />
 
-      <p className="mt-10 text-center text-sm text-[var(--muted)]">MYTHH.IN · or truth?</p>
+      <p className="mt-10 text-center text-sm text-[var(--muted)]">{SITE_HOST} · or truth?</p>
     </div>
   );
 }

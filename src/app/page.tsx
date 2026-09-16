@@ -34,7 +34,7 @@ export default async function HomePage({
     return (
       <div className="page-shell">
         <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--cream)]">
-          MYTHH — or truth?
+          Myth — or truth?
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
           Swipe through popular claims, choose Fact or Myth, and read a short AI write-up. For

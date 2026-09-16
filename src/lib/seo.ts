@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
-export const SITE_NAME = "MYTHH";
-export const SITE_TITLE = "MYTHH — or truth?";
+export const SITE_NAME = "Myth";
+export const SITE_TITLE = "Myth — or truth?";
+export const SITE_HOST = "mythh.in";
 export const SITE_DESCRIPTION =
   "Swipe through popular claims, choose Fact or Myth, and read a short AI write-up. For curiosity, not professional advice.";
 

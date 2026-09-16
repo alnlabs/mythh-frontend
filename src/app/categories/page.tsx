@@ -6,7 +6,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Categories",
-  description: "Browse MYTHH claims by topic — health, history, science, folklore, and more.",
+  description: "Browse Myth claims by topic — health, history, science, folklore, and more.",
   path: "/categories",
 });
 

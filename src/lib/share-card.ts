@@ -25,5 +25,5 @@ export async function openNativeShare(myth: Myth, guess: "TRUE" | "FALSE" | null
 
   const url = mythShareUrl(myth);
   const text = mythShareText(myth, guess);
-  await navigator.share({ title: "MYTHH", text, url });
+  await navigator.share({ title: "Myth", text, url });
 }

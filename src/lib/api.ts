@@ -8,7 +8,7 @@ import type {
 } from "./types";
 
 const LOCAL_API_URL = "http://localhost:3001/api/v1";
-const PRODUCTION_API_URL = "https://mythh-backend.vercel.app/api/v1";
+const PRODUCTION_API_URL = "https://api.mythh.in/api/v1";
 
 function isLocalApiUrl(value?: string) {
   if (!value) return true;
@@ -38,6 +38,7 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
+    public payload: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = "ApiError";
@@ -64,6 +65,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const payload = (await response.json().catch(() => ({}))) as {
     message?: string;
     code?: string;
+    [key: string]: unknown;
   };
 
   if (!response.ok) {
@@ -71,6 +73,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       response.status,
       payload.code ?? "REQUEST_FAILED",
       payload.message ?? "Request failed",
+      payload,
     );
   }
 
@@ -115,11 +118,31 @@ export const api = {
     request<{ myths: Myth[] }>(`/search?q=${encodeURIComponent(q)}`),
   advertisements: () =>
     request<{ advertisements: Advertisement[] }>("/advertisements"),
-  vote: (idOrSlug: string, value: "TRUE" | "FALSE") =>
-    request<{ vote: { id: string; value: string } }>(
-      `/myths/${idOrSlug}/votes`,
-      { method: "POST", body: JSON.stringify({ value }) },
-    ),
+  vote: async (idOrSlug: string, value: "TRUE" | "FALSE") => {
+    try {
+      return await request<{
+        vote: { id: string; value: "TRUE" | "FALSE" };
+        isCorrect: boolean;
+        correctAnswer: "TRUE" | "FALSE" | null;
+        alreadyAnswered: boolean;
+        myth: Myth;
+      }>(`/myths/${idOrSlug}/votes`, {
+        method: "POST",
+        body: JSON.stringify({ value }),
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409 && error.payload.myth) {
+        return error.payload as {
+          vote: { id: string; value: "TRUE" | "FALSE" };
+          isCorrect: boolean;
+          correctAnswer: "TRUE" | "FALSE" | null;
+          alreadyAnswered: boolean;
+          myth: Myth;
+        };
+      }
+      throw error;
+    }
+  },
   comment: (idOrSlug: string, content: string) =>
     request<{ comment: { id: string; content: string; created_at: string } }>(
       `/myths/${idOrSlug}/comments`,

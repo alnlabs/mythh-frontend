@@ -114,7 +114,7 @@ export function ShareSheet({
       icon: Mail,
       onClick: () =>
         openShareLink(
-          `mailto:?subject=${encodeURIComponent("MYTHH")}&body=${encodeURIComponent(message)}`,
+          `mailto:?subject=${encodeURIComponent("Myth")}&body=${encodeURIComponent(message)}`,
         ),
     },
   ];

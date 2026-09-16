@@ -30,7 +30,7 @@ export function DisclaimerSection() {
           — widely repeated public stories, not a copy of any one publisher’s article.
         </p>
         <p>
-          MYTHH is a game. Explanations are short write-ups for voting and talk, not medical, legal,
+          Myth is a game. Explanations are short write-ups for voting and talk, not medical, legal,
           financial, or other professional advice. A Myth or Fact tally is what people here chose,
           not a diagnosis or a court finding.
         </p>
