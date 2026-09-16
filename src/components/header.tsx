@@ -21,6 +21,7 @@ import { Avatar } from "./avatar";
 import { useAuth } from "./auth-provider";
 import { CategorySwitch } from "./category-switch";
 import { CountrySwitch } from "./country-switch";
+import { ThemeToggle } from "./theme-toggle";
 
 function BrandMark() {
   return (
@@ -100,6 +101,7 @@ export function Header({ country, category }: { country: string; category: strin
         </form>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <ThemeToggle />
           {signedIn ? (
             <>
               {me?.profile?.role === "ADMIN" && (
@@ -138,7 +140,7 @@ export function Header({ country, category }: { country: string; category: strin
             <button
               type="button"
               onClick={login}
-              className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[var(--gold)] px-2.5 py-1 text-[11px] font-medium text-[var(--ink)] sm:px-4 sm:py-2 sm:text-sm"
+              className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[var(--gold)] px-2.5 py-1 text-[11px] font-medium text-[var(--on-gold)] sm:px-4 sm:py-2 sm:text-sm"
             >
               <LogIn className="mr-1 hidden size-4 sm:inline" />
               Sign in
@@ -168,6 +170,10 @@ export function Header({ country, category }: { country: string; category: strin
             />
           </form>
           <div className="flex flex-col gap-3 text-[var(--cream)]">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--muted)]">Theme</span>
+              <ThemeToggle />
+            </div>
             {links.map((link) => (
               <Link
                 key={link.href}

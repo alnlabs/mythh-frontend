@@ -77,7 +77,7 @@ export default function AboutPage() {
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
           href="/"
-          className="inline-flex items-center justify-center rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-semibold text-[var(--ink)]"
+          className="inline-flex items-center justify-center rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-semibold text-[var(--on-gold)]"
         >
           Start the feed
         </Link>
@@ -146,7 +146,7 @@ export default function AboutPage() {
         </p>
         <Link
           href="/submit"
-          className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-semibold text-[var(--ink)]"
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-semibold text-[var(--on-gold)]"
         >
           <PenLine className="size-4" />
           Submit a myth

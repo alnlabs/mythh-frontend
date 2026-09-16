@@ -144,7 +144,7 @@ export function AdminPanel() {
         <button
           type="button"
           onClick={login}
-          className="mx-auto mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-[var(--gold)] px-6 py-3 text-[var(--ink)]"
+          className="mx-auto mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-[var(--gold)] px-6 py-3 text-[var(--on-gold)]"
         >
           <LogIn className="size-4" />
           Sign in with Google
@@ -203,7 +203,7 @@ export function AdminPanel() {
             onClick={() => setTab(item.id)}
             className={`rounded-full px-4 py-2 text-sm ${
               tab === item.id
-                ? "bg-[var(--gold)] text-[var(--ink)]"
+                ? "bg-[var(--gold)] text-[var(--on-gold)]"
                 : "border border-[var(--line)] text-[var(--cream)]"
             }`}
           >
@@ -401,7 +401,7 @@ export function AdminPanel() {
               type="button"
               disabled={Boolean(busy)}
               onClick={submitAd}
-              className="mt-4 inline-flex items-center justify-center rounded-full bg-[var(--gold)] px-5 py-2 text-sm font-semibold text-[var(--ink)]"
+              className="mt-4 inline-flex items-center justify-center rounded-full bg-[var(--gold)] px-5 py-2 text-sm font-semibold text-[var(--on-gold)]"
             >
               Add ad
             </button>

@@ -81,7 +81,7 @@ export function CommentsPanel({
           />
           <button
             type="submit"
-            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 text-sm text-[var(--ink)]"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 text-sm text-[var(--on-gold)]"
           >
             <Send className="size-4" />
             Post
@@ -94,7 +94,7 @@ export function CommentsPanel({
           <button
             type="button"
             onClick={login}
-            className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-4 py-2 text-sm text-[var(--ink)]"
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-4 py-2 text-sm text-[var(--on-gold)]"
           >
             <LogIn className="size-4" />
             Sign in

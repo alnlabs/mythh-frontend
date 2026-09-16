@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist } from "next/font/google";
+import Script from "next/script";
 
 import { AuthProvider } from "@/components/auth-provider";
 import { DisableNativeValidation } from "@/components/disable-native-validation";
 import { SiteDisclaimer } from "@/components/disclaimer";
 import { SiteHeader } from "@/components/site-header";
+import { ThemeProvider } from "@/components/theme-provider";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteUrl } from "@/lib/seo";
+import { THEME_BOOTSTRAP } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -23,6 +26,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  colorScheme: "light dark",
 };
 
 export const metadata: Metadata = {
@@ -53,14 +57,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geist.variable} ${fraunces.variable} h-full`}>
+    <html lang="en" className={`${geist.variable} ${fraunces.variable} h-full`} suppressHydrationWarning>
       <body className="flex min-h-full max-w-full min-w-0 flex-col overflow-x-hidden antialiased">
-        <AuthProvider>
-          <DisableNativeValidation />
-          <SiteHeader />
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">{children}</main>
-          <SiteDisclaimer />
-        </AuthProvider>
+        <Script id="myth-theme" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        <ThemeProvider>
+          <AuthProvider>
+            <DisableNativeValidation />
+            <SiteHeader />
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">{children}</main>
+            <SiteDisclaimer />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

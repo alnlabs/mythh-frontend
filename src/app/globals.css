@@ -10,6 +10,26 @@
   --true: #3d7a55;
   --false: #c04532;
   --paper: #f7f1e6;
+  --glow: #2a241c;
+  --on-gold: #12100d;
+  --overlay: rgb(0 0 0 / 0.55);
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  --ink: #f6efe2;
+  --ink-soft: #efe4cf;
+  --cream: #1a1612;
+  --muted: #6d6458;
+  --line: #d7cbb8;
+  --gold: #a07830;
+  --true: #2d6a48;
+  --false: #b03a2a;
+  --paper: #fffaf2;
+  --glow: #fff6e6;
+  --on-gold: #1a1612;
+  --overlay: rgb(26 22 18 / 0.4);
+  color-scheme: light;
 }
 
 @theme inline {
@@ -28,9 +48,10 @@ body {
 }
 
 body {
-  background: radial-gradient(circle at top, #2a241c 0%, var(--ink) 42%);
+  background: radial-gradient(circle at top, var(--glow) 0%, var(--ink) 42%);
   color: var(--cream);
   font-family: var(--font-geist-sans), sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 a,

@@ -157,7 +157,7 @@ export default function SubmitPage() {
         <button
           type="button"
           onClick={onSubmit}
-          className="inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-6 py-3 text-[var(--ink)]"
+          className="inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-6 py-3 text-[var(--on-gold)]"
         >
           <Send className="size-4" />
           {me?.profile ? "Submit" : "Sign in to submit"}

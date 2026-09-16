@@ -122,7 +122,7 @@ export function ShareSheet({
   return (
     <div
       data-share-sheet
-      className="absolute inset-0 z-40 flex items-end bg-black/55"
+      className="absolute inset-0 z-40 flex items-end bg-[var(--overlay)]"
       onPointerDown={(event) => {
         event.stopPropagation();
         if (event.target === event.currentTarget) onClose();
