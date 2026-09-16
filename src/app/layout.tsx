@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist } from "next/font/google";
-import Script from "next/script";
 
 import { AuthProvider } from "@/components/auth-provider";
 import { DisableNativeValidation } from "@/components/disable-native-validation";
@@ -58,8 +57,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geist.variable} ${fraunces.variable} h-full`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body className="flex min-h-full max-w-full min-w-0 flex-col overflow-x-hidden antialiased">
-        <Script id="myth-theme" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         <ThemeProvider>
           <AuthProvider>
             <DisableNativeValidation />

@@ -120,10 +120,11 @@ function fillWindow(
   return next;
 }
 
-function buildDeck(items: FeedItem[], myths: Myth[], ads: Advertisement[]) {
+function initialDeck(items: FeedItem[]) {
   const start = startItem(items);
   if (!start) return [];
-  return fillWindow([start], 0, myths, ads);
+  const rest = items.filter((item) => itemKey(item) !== itemKey(start));
+  return [start, ...rest].slice(0, 1 + WINDOW);
 }
 
 export function SlideFeed({
@@ -142,7 +143,7 @@ export function SlideFeed({
     () => items.filter((item): item is Extract<FeedItem, { kind: "ad" }> => item.kind === "ad").map((item) => item.ad),
     [items],
   );
-  const [deck, setDeck] = useState<FeedItem[]>(() => buildDeck(items, myths, ads));
+  const [deck, setDeck] = useState<FeedItem[]>(() => initialDeck(items));
   const [index, setIndex] = useState(0);
   const [guess, setGuess] = useState<"TRUE" | "FALSE" | null>(
     () => startMyth(items)?.myVote ?? null,
@@ -203,7 +204,7 @@ export function SlideFeed({
   }, []);
 
   useEffect(() => {
-    const nextDeck = withSavedVotes(buildDeck(items, myths, ads));
+    const nextDeck = fillWindow(withSavedVotes(initialDeck(items)), 0, myths, ads);
     const first = nextDeck[0];
     setDeck(nextDeck);
     setIndex(0);
@@ -632,7 +633,7 @@ function MythSlide({
         </div>
         {showStats && (
           <p className="mt-4 text-sm text-[var(--muted)]">
-            Based on {myth.stats.responseCount.toLocaleString()} responses
+            Based on {myth.stats.responseCount.toLocaleString("en-IN")} responses
           </p>
         )}
       </div>

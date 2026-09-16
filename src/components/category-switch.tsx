@@ -58,6 +58,9 @@ export function CategorySwitch({
         style={{ minWidth: 0 }}
       >
         <option value="all">All topics</option>
+        {value !== "all" && !categories.some((category) => category.slug === value) ? (
+          <option value={value}>{value}</option>
+        ) : null}
         {categories.map((category) => (
           <option key={category.id} value={category.slug}>
             {category.name}

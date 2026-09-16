@@ -24,13 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const syncedPrefs = useRef(false);
-  const [notice, setNotice] = useState(() => {
-    if (typeof window === "undefined") return "";
-    const auth = new URLSearchParams(window.location.search).get("auth");
-    if (auth === "cancelled") return "Sign-in cancelled.";
-    if (auth === "error") return "Sign-in failed. Try again.";
-    return "";
-  });
+  const [notice, setNotice] = useState("");
 
   function applyProfile(profile: Profile) {
     setMe((current) => (current ? { ...current, profile } : { authMode: "user", user: null, profile }));
@@ -74,6 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const auth = params.get("auth");
+    if (auth === "cancelled") setNotice("Sign-in cancelled.");
+    if (auth === "error") setNotice("Sign-in failed. Try again.");
     if (auth !== "cancelled" && auth !== "error") return;
 
     params.delete("auth");
