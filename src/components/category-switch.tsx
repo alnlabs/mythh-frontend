@@ -9,7 +9,15 @@ import { api } from "@/lib/api";
 import { writeCategoryCookie } from "@/lib/country";
 import type { Category } from "@/lib/types";
 
-export function CategorySwitch({ value }: { value: string }) {
+export function CategorySwitch({
+  value,
+  full = false,
+  compact = false,
+}: {
+  value: string;
+  full?: boolean;
+  compact?: boolean;
+}) {
   const router = useRouter();
   const { me, refreshMe } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -22,8 +30,10 @@ export function CategorySwitch({ value }: { value: string }) {
   }, []);
 
   return (
-    <label className="inline-flex min-w-0 items-center gap-1.5 text-sm text-[var(--muted)]">
-      <FolderOpen className="size-4 shrink-0 text-[var(--gold)]" />
+    <label
+      className={`inline-flex min-w-0 items-center gap-1 text-sm text-[var(--muted)] ${full || compact ? "w-full" : "max-w-full"}`}
+    >
+      <FolderOpen className="hidden size-3.5 shrink-0 text-[var(--gold)] min-[380px]:block sm:size-4" />
       <select
         value={value}
         aria-label="Default category"
@@ -40,7 +50,12 @@ export function CategorySwitch({ value }: { value: string }) {
           router.push(next === "all" ? "/" : `/?category=${next}`);
           router.refresh();
         }}
-        className="max-w-28 truncate rounded-full border border-[var(--line)] bg-[var(--ink-soft)] px-2 py-1 text-[var(--cream)] outline-none sm:max-w-36"
+        className={
+          full || compact
+            ? "min-w-0 w-full max-w-full flex-1 truncate rounded-full border border-[var(--line)] bg-[var(--ink-soft)] px-2 py-1 text-[11px] text-[var(--cream)] outline-none sm:px-2.5 sm:text-xs"
+            : "min-w-0 max-w-36 truncate rounded-full border border-[var(--line)] bg-[var(--ink-soft)] px-2 py-1 text-sm text-[var(--cream)] outline-none"
+        }
+        style={{ minWidth: 0 }}
       >
         <option value="all">All topics</option>
         {categories.map((category) => (

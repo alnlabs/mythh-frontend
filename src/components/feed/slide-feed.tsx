@@ -11,9 +11,8 @@ import {
   Share2,
   ShieldQuestion,
   UserRound,
-  X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { CommentsPanel } from "@/components/comments-panel";
@@ -22,13 +21,14 @@ import { api, ApiError } from "@/lib/api";
 import {
   pickNextMyth,
   pickRandomAd,
-  readSeenMyths,
   rememberSeenMyth,
   shouldShowAd,
 } from "@/lib/feed";
 import { openNativeShare } from "@/lib/share-card";
 import { countryName } from "@/lib/country";
-import type { FeedItem, Myth } from "@/lib/types";
+import type { Advertisement, FeedItem, Myth } from "@/lib/types";
+
+const WINDOW = 5;
 
 function startItem(items: FeedItem[]) {
   return items.find((item) => item.kind === "myth") ?? items[0] ?? null;
@@ -39,7 +39,78 @@ function startMyth(items: FeedItem[]) {
   return first?.kind === "myth" ? first.myth : null;
 }
 
-export function SlideFeed({ items }: { items: FeedItem[] }) {
+function itemKey(item: FeedItem | null) {
+  if (!item) return "";
+  return item.kind === "myth" ? item.myth.id : `ad:${item.ad.id}`;
+}
+
+function lastMythIn(deck: FeedItem[]) {
+  for (let index = deck.length - 1; index >= 0; index -= 1) {
+    const item = deck[index];
+    if (item?.kind === "myth") return item.myth;
+  }
+  return null;
+}
+
+function pickAhead(
+  deck: FeedItem[],
+  myths: Myth[],
+  ads: Advertisement[],
+): FeedItem | null {
+  const now = deck[deck.length - 1];
+  if (!now) return null;
+
+  const used = new Set(deck.map(itemKey));
+  const seen = deck.flatMap((item) => (item.kind === "myth" ? [item.myth.id] : []));
+  let last = lastMythIn(deck);
+
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    let candidate: FeedItem | null = null;
+    if (now.kind === "myth" && shouldShowAd(false, ads.length > 0)) {
+      const ad = pickRandomAd(ads, null);
+      if (ad) candidate = { kind: "ad", ad };
+    }
+    if (!candidate) {
+      const nextMyth = pickNextMyth(myths, now.kind === "myth" ? now.myth : last, seen);
+      if (nextMyth) candidate = { kind: "myth", myth: nextMyth };
+    }
+    if (!candidate) return null;
+    if (!used.has(itemKey(candidate))) return candidate;
+    if (candidate.kind === "myth") seen.push(candidate.myth.id);
+  }
+
+  const unused = myths.find((myth) => !used.has(myth.id));
+  return unused ? { kind: "myth", myth: unused } : null;
+}
+
+function fillWindow(
+  deck: FeedItem[],
+  index: number,
+  myths: Myth[],
+  ads: Advertisement[],
+) {
+  const next = [...deck];
+  while (next.length - 1 - index < WINDOW) {
+    const item = pickAhead(next, myths, ads);
+    if (!item) break;
+    next.push(item);
+  }
+  return next;
+}
+
+function buildDeck(items: FeedItem[], myths: Myth[], ads: Advertisement[]) {
+  const start = startItem(items);
+  if (!start) return [];
+  return fillWindow([start], 0, myths, ads);
+}
+
+export function SlideFeed({
+  items,
+  filterKey = "all",
+}: {
+  items: FeedItem[];
+  filterKey?: string;
+}) {
   const { me, login, loading } = useAuth();
   const myths = useMemo(
     () => items.filter((item): item is Extract<FeedItem, { kind: "myth" }> => item.kind === "myth").map((item) => item.myth),
@@ -49,43 +120,78 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
     () => items.filter((item): item is Extract<FeedItem, { kind: "ad" }> => item.kind === "ad").map((item) => item.ad),
     [items],
   );
-  const [current, setCurrent] = useState<FeedItem | null>(() => startItem(items));
-  const [history, setHistory] = useState<FeedItem[]>([]);
-  const [seen, setSeen] = useState<string[]>(() => readSeenMyths());
+  const [deck, setDeck] = useState<FeedItem[]>(() => buildDeck(items, myths, ads));
+  const [index, setIndex] = useState(0);
   const [guess, setGuess] = useState<"TRUE" | "FALSE" | null>(null);
-  const [myth, setMyth] = useState<Myth | null>(() => startMyth(items));
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [lastWheel, setLastWheel] = useState(0);
   const feedRef = useRef<HTMLElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef({
     active: false,
+    tracking: false,
     startY: 0,
     lastY: 0,
     lastT: 0,
     velocity: 0,
   });
   const swipeLock = useRef(false);
+  const pendingTarget = useRef(-1);
+  const pendingDeck = useRef<FeedItem[] | null>(null);
+  const indexRef = useRef(0);
+  const offsetRef = useRef(0);
+  const heightRef = useRef(0);
+  const deckRef = useRef(deck);
   const startId = startMyth(items)?.id ?? "";
-  const lastMythRef = useRef<Myth | null>(myth);
-  if (myth) lastMythRef.current = myth;
-  const stateRef = useRef({ current, history, seen, commentsOpen, shareOpen });
-  stateRef.current = { current, history, seen, commentsOpen, shareOpen };
+  const sessionKey = `${filterKey}::${startId}`;
+  const current = deck[index] ?? null;
+  const myth = current?.kind === "myth" ? current.myth : null;
+
+  indexRef.current = index;
+  deckRef.current = deck;
+
+  const stateRef = useRef({ commentsOpen, shareOpen });
+  stateRef.current = { commentsOpen, shareOpen };
+
+  function paint(offset: number, animated: boolean) {
+    offsetRef.current = offset;
+    const node = trackRef.current;
+    if (!node) return;
+    const y = -indexRef.current * heightRef.current + offset;
+    node.style.transition = animated ? "transform 300ms ease-out" : "none";
+    node.style.transform = `translate3d(0, ${y}px, 0)`;
+  }
+
+  useLayoutEffect(() => {
+    const feed = feedRef.current;
+    if (!feed) return;
+
+    function measure() {
+      heightRef.current = feed?.clientHeight ?? 0;
+      paint(0, false);
+    }
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(feed);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
-    const firstMyth = myths.find((item) => item.id === startId);
-    if (!firstMyth) return;
-    setCurrent({ kind: "myth", myth: firstMyth });
-    setHistory([]);
+    const nextDeck = buildDeck(items, myths, ads);
+    setDeck(nextDeck);
+    setIndex(0);
     setGuess(null);
     setCommentsOpen(false);
     setShareOpen(false);
-    setMyth(firstMyth);
-    setSeen(rememberSeenMyth(firstMyth.id));
-    // Only reset when the opened claim changes, not when the pool refreshes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- startId is the session key
-  }, [startId]);
+    indexRef.current = 0;
+    const first = nextDeck[0];
+    if (first?.kind === "myth") rememberSeenMyth(first.myth.id);
+    requestAnimationFrame(() => paint(0, false));
+    // Rebuild when the opened claim or country/category filter changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionKey is the filter/start contract
+  }, [sessionKey]);
 
   useEffect(() => {
     if (!myth) return;
@@ -95,60 +201,68 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
     document.title = `${myth.title} · MYTHH`;
   }, [myth]);
 
-  const showItem = useCallback((item: FeedItem | null) => {
-    if (!item) return;
-    setCurrent(item);
+  const settlePending = useCallback(() => {
+    if (pendingTarget.current < 0) return;
+    const target = pendingTarget.current;
+    const filled = pendingDeck.current ?? deckRef.current;
+    pendingTarget.current = -1;
+    pendingDeck.current = null;
+    indexRef.current = target;
+    setDeck(filled);
+    setIndex(target);
     setGuess(null);
     setCommentsOpen(false);
     setShareOpen(false);
-    if (item.kind === "myth") {
-      setMyth(item.myth);
-      setSeen(rememberSeenMyth(item.myth.id));
-    } else {
-      setMyth(null);
-    }
+    const item = filled[target];
+    if (item?.kind === "myth") rememberSeenMyth(item.myth.id);
+    requestAnimationFrame(() => {
+      paint(0, false);
+      swipeLock.current = false;
+    });
   }, []);
 
-  const goNext = useCallback(() => {
-    const { current: now, history: past, seen: seenIds, commentsOpen: comments, shareOpen: sharing } =
-      stateRef.current;
-    if (!now || comments || sharing) return;
-    if (myths.length <= 1 && (now.kind === "ad" || ads.length === 0)) return;
+  const goTo = useCallback(
+    (nextIndex: number, animated: boolean) => {
+      if (nextIndex < 0 || swipeLock.current) return;
+      const { commentsOpen: comments, shareOpen: sharing } = stateRef.current;
+      if (comments || sharing) return;
 
-    if (now.kind === "myth" && shouldShowAd(false, ads.length > 0)) {
-      const ad = pickRandomAd(ads, null);
-      if (ad) {
-        setHistory([...past, now]);
-        showItem({ kind: "ad", ad });
+      const filled = fillWindow(deckRef.current, nextIndex, myths, ads);
+      const target = Math.min(nextIndex, filled.length - 1);
+      if (target === indexRef.current) {
+        paint(0, true);
         return;
       }
-    }
 
-    const nextMyth = pickNextMyth(
-      myths,
-      now.kind === "myth" ? now.myth : lastMythRef.current,
-      seenIds,
-    );
-    if (!nextMyth || (now.kind === "myth" && nextMyth.id === now.myth.id)) return;
-    setHistory([...past, now]);
-    showItem({ kind: "myth", myth: nextMyth });
-  }, [ads, myths, showItem]);
+      if (animated && heightRef.current) {
+        deckRef.current = filled;
+        setDeck(filled);
+        swipeLock.current = true;
+        pendingTarget.current = target;
+        pendingDeck.current = filled;
+        paint((indexRef.current - target) * heightRef.current, true);
+        window.setTimeout(settlePending, 340);
+        return;
+      }
 
-  const goPrev = useCallback(() => {
-    const { history: past, commentsOpen: comments, shareOpen: sharing } = stateRef.current;
-    if (comments || sharing || past.length === 0) return;
-    const previous = past[past.length - 1];
-    if (!previous) return;
-    setHistory(past.slice(0, -1));
-    showItem(previous);
-  }, [showItem]);
+      indexRef.current = target;
+      setDeck(filled);
+      setIndex(target);
+      setGuess(null);
+      setCommentsOpen(false);
+      setShareOpen(false);
+      const item = filled[target];
+      if (item?.kind === "myth") rememberSeenMyth(item.myth.id);
+      paint(0, false);
+    },
+    [ads, myths, settlePending],
+  );
 
   const go = useCallback(
     (delta: number) => {
-      if (delta > 0) goNext();
-      else goPrev();
+      goTo(indexRef.current + delta, false);
     },
-    [goNext, goPrev],
+    [goTo],
   );
 
   const vote = useCallback(
@@ -165,9 +279,10 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
       try {
         await api.vote(myth.slug, value);
         const next = await api.myth(myth.slug);
-        setMyth(next.myth);
-        setCurrent((now) =>
-          now?.kind === "myth" && now.myth.id === next.myth.id ? { kind: "myth", myth: next.myth } : now,
+        setDeck((now) =>
+          now.map((item) =>
+            item.kind === "myth" && item.myth.id === next.myth.id ? { kind: "myth", myth: next.myth } : item,
+          ),
         );
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
@@ -202,17 +317,18 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
     };
   }, [go, vote]);
 
-  function applySwipe(y: number, animated: boolean) {
-    const node = cardRef.current;
+  useEffect(() => {
+    const node = trackRef.current;
     if (!node) return;
-    const distance = Math.abs(y);
-    const shrink = 1 - Math.min(0.045, distance / 4200);
-    node.style.transition = animated
-      ? "transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease"
-      : "none";
-    node.style.transform = `translate3d(0, ${y}px, 0) scale(${shrink})`;
-    node.style.opacity = String(1 - Math.min(0.42, distance / 780));
-  }
+
+    function onEnd(event: TransitionEvent) {
+      if (event.target !== node || event.propertyName !== "transform") return;
+      settlePending();
+    }
+
+    node.addEventListener("transitionend", onEnd);
+    return () => node.removeEventListener("transitionend", onEnd);
+  }, [settlePending]);
 
   function startDrag(event: React.PointerEvent<HTMLElement>) {
     if (commentsOpen || shareOpen || swipeLock.current) return;
@@ -223,16 +339,21 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
       active: true,
+      tracking: false,
       startY: event.clientY,
       lastY: event.clientY,
       lastT: Date.now(),
       velocity: 0,
     };
-    applySwipe(0, false);
   }
 
   function moveDrag(event: React.PointerEvent<HTMLElement>) {
     if (!dragRef.current.active) return;
+    const raw = event.clientY - dragRef.current.startY;
+    if (!dragRef.current.tracking) {
+      if (Math.abs(raw) < 10) return;
+      dragRef.current.tracking = true;
+    }
     event.preventDefault();
     window.getSelection()?.removeAllRanges();
     const now = Date.now();
@@ -240,36 +361,38 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
     dragRef.current.velocity = (event.clientY - dragRef.current.lastY) / dt;
     dragRef.current.lastY = event.clientY;
     dragRef.current.lastT = now;
-    let offset = event.clientY - dragRef.current.startY;
-    if (offset > 0 && history.length === 0) offset *= 0.22;
-    applySwipe(offset, false);
+
+    const height = heightRef.current || feedRef.current?.clientHeight || 720;
+    let offset = raw;
+    if (offset > 0 && indexRef.current === 0) offset *= 0.18;
+    if (offset < 0 && indexRef.current >= deckRef.current.length - 1) offset *= 0.18;
+    offset = Math.max(-height, Math.min(height, offset));
+    paint(offset, false);
   }
 
   function finishDrag(event: React.PointerEvent<HTMLElement>) {
     if (!dragRef.current.active) return;
+    const wasTracking = dragRef.current.tracking;
     dragRef.current.active = false;
+    dragRef.current.tracking = false;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+    if (!wasTracking) return;
 
     const offset = event.clientY - dragRef.current.startY;
     const velocity = dragRef.current.velocity;
-    const height = feedRef.current?.clientHeight ?? 720;
-    const goNextSlide = offset < -64 || velocity < -0.55;
-    const goPrevSlide = (offset > 64 || velocity > 0.55) && history.length > 0;
+    const height = heightRef.current || 720;
+    const threshold = Math.max(72, height * 0.18);
+    const goNextSlide = (offset < -threshold || velocity < -0.5) && indexRef.current < deckRef.current.length - 1;
+    const goPrevSlide = (offset > threshold || velocity > 0.5) && indexRef.current > 0;
 
     if (goNextSlide || goPrevSlide) {
-      swipeLock.current = true;
-      applySwipe(goNextSlide ? -height : height, true);
-      window.setTimeout(() => {
-        go(goNextSlide ? 1 : -1);
-        applySwipe(0, false);
-        swipeLock.current = false;
-      }, 260);
+      goTo(indexRef.current + (goNextSlide ? 1 : -1), true);
       return;
     }
 
-    applySwipe(0, true);
+    paint(0, true);
   }
 
   async function openShareOptions() {
@@ -293,18 +416,26 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
     );
   }
 
+  const from = Math.max(0, index - WINDOW);
+  const to = Math.min(deck.length - 1, index + WINDOW);
+
   return (
     <section
       ref={feedRef}
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden select-none [-webkit-user-drag:none] [-webkit-touch-callout:none]"
-      style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}
+      style={{
+        touchAction: "none",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        overscrollBehavior: "none",
+      }}
       onPointerDown={startDrag}
       onPointerMove={moveDrag}
       onPointerUp={finishDrag}
       onPointerCancel={(event) => {
         if (!dragRef.current.active) return;
         dragRef.current.active = false;
-        applySwipe(0, true);
+        paint(0, true);
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
           event.currentTarget.releasePointerCapture(event.pointerId);
         }
@@ -318,41 +449,33 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
       }}
     >
       <DesktopNav
-        canPrev={history.length > 0}
-        canNext={myths.length > 1 || (Boolean(current && current.kind === "myth") && ads.length > 0)}
+        canPrev={index > 0}
+        canNext={index < deck.length - 1 || myths.length > 1}
         onPrev={() => go(-1)}
         onNext={() => go(1)}
       />
 
-      <div className="pointer-events-none absolute inset-x-0 top-1/2 z-0 flex -translate-y-1/2 justify-center md:hidden">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--gold)]/50">
-          {history.length > 0 ? "Swipe" : "Swipe up"}
-        </p>
-      </div>
-
-      <div
-        ref={cardRef}
-        className="relative z-10 flex min-h-0 w-full flex-1 flex-col will-change-transform"
-      >
-        {current.kind === "ad" ? (
-          <AdSlide title={current.ad.title} body={current.ad.body} href={current.ad.linkUrl} />
-        ) : (
-          <MythSlide
-            key={(myth ?? current.myth).id}
-            myth={myth ?? current.myth}
-            number={
-              history.filter((item) => item.kind === "myth").length + 1
-            }
-            guess={guess}
-            showStats={Boolean(guess && me?.profile)}
-            onVote={vote}
-            onComments={() => setCommentsOpen(true)}
-            onShare={() => {
-              setCommentsOpen(false);
-              void openShareOptions();
-            }}
-          />
-        )}
+      <div ref={trackRef} className="relative z-10 min-h-0 w-full flex-1">
+        {deck.slice(from, to + 1).map((item, sliceIndex) => {
+          const slot = from + sliceIndex;
+          return (
+            <FeedPage
+              key={`${itemKey(item)}-${slot}`}
+              item={item}
+              slot={slot}
+              number={slot + 1}
+              active={slot === index}
+              guess={slot === index ? guess : null}
+              showStats={slot === index && Boolean(guess && me?.profile)}
+              onVote={vote}
+              onComments={() => setCommentsOpen(true)}
+              onShare={() => {
+                setCommentsOpen(false);
+                void openShareOptions();
+              }}
+            />
+          );
+        })}
       </div>
 
       {current.kind === "myth" && myth && (
@@ -374,6 +497,53 @@ export function SlideFeed({ items }: { items: FeedItem[] }) {
   );
 }
 
+function FeedPage({
+  item,
+  slot,
+  number,
+  active,
+  guess,
+  showStats,
+  onVote,
+  onComments,
+  onShare,
+}: {
+  item: FeedItem;
+  slot: number;
+  number: number;
+  active: boolean;
+  guess: "TRUE" | "FALSE" | null;
+  showStats: boolean;
+  onVote: (value: "TRUE" | "FALSE") => void;
+  onComments: () => void;
+  onShare: () => void;
+}) {
+  return (
+    <div
+      className={`absolute inset-0 flex flex-col bg-[var(--ink)] ${active ? "" : "pointer-events-none"}`}
+      style={{
+        transform: `translate3d(0, ${slot * 100}%, 0)`,
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
+      }}
+    >
+      {item.kind === "ad" ? (
+        <AdSlide title={item.ad.title} body={item.ad.body} href={active ? item.ad.linkUrl : null} />
+      ) : (
+        <MythSlide
+          myth={item.myth}
+          number={number}
+          guess={guess}
+          showStats={showStats}
+          onVote={onVote}
+          onComments={onComments}
+          onShare={onShare}
+        />
+      )}
+    </div>
+  );
+}
+
 function MythSlide({
   myth,
   number,
@@ -391,11 +561,10 @@ function MythSlide({
   onComments: () => void;
   onShare: () => void;
 }) {
-
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center px-5 py-6 md:px-16 lg:px-20">
       <div className="flex w-full min-w-0 max-w-5xl flex-1 flex-col items-center justify-center text-center">
-        <p className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--ink-soft)] px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-[var(--gold)]">
+        <p className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-[var(--ink-soft)] px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-[var(--gold)]">
           <ShieldQuestion className="size-3.5" />
           Claim {String(number).padStart(3, "0")}
           {myth.category ? ` · ${myth.category.name}` : ""}
@@ -411,27 +580,17 @@ function MythSlide({
             value="FALSE"
             title="Myth"
             selected={guess === "FALSE"}
+            percent={showStats ? myth.stats.falsePercent : null}
             onClick={() => onVote("FALSE")}
           />
           <VoteButton
             value="TRUE"
             title="Fact"
             selected={guess === "TRUE"}
+            percent={showStats ? myth.stats.truePercent : null}
             onClick={() => onVote("TRUE")}
           />
         </div>
-        {showStats && (
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-[var(--muted)]">
-            <span className="inline-flex items-center gap-1.5">
-              <X className="size-4 text-[var(--false)]" />
-              Myth {myth.stats.falsePercent}%
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Check className="size-4 text-[var(--true)]" />
-              Fact {myth.stats.truePercent}%
-            </span>
-          </div>
-        )}
       </div>
 
       <footer className="mt-6 flex w-full max-w-5xl flex-col items-center gap-4">
@@ -505,11 +664,13 @@ function VoteButton({
   value,
   title,
   selected,
+  percent,
   onClick,
 }: {
   value: "TRUE" | "FALSE";
   title: string;
   selected: boolean;
+  percent: number | null;
   onClick: () => void;
 }) {
   const isFact = value === "TRUE";
@@ -532,6 +693,7 @@ function VoteButton({
       <span className="inline-flex items-center justify-center gap-1.5">
         {selected && <Check className="size-4" />}
         <span>{title}</span>
+        {percent != null && <span>{percent}%</span>}
       </span>
     </button>
   );

@@ -93,6 +93,7 @@ export default async function MythPage({ params, searchParams }: Props) {
       />
       <SlideFeed
         items={buildMythFeed(myth, mythsResult.myths, adsResult.advertisements)}
+        filterKey={`${country}:${category ?? "all"}`}
       />
     </>
   );

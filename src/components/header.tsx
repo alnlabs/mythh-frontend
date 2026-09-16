@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useLayoutEffect, useRef, useState } from "react";
+import { FormEvent, useState } from "react";
 
 import { Avatar } from "./avatar";
 import { useAuth } from "./auth-provider";
@@ -23,47 +23,15 @@ import { CategorySwitch } from "./category-switch";
 import { CountrySwitch } from "./country-switch";
 
 function BrandMark() {
-  const titleRef = useRef<HTMLSpanElement>(null);
-  const tagRef = useRef<HTMLSpanElement>(null);
-
-  useLayoutEffect(() => {
-    const title = titleRef.current;
-    const tag = tagRef.current;
-    if (!title || !tag) return;
-
-    function fit() {
-      if (!title || !tag) return;
-      tag.style.fontSize = "20px";
-      const target = title.getBoundingClientRect().width;
-      const current = tag.getBoundingClientRect().width;
-      if (target <= 0 || current <= 0) return;
-      const size = parseFloat(getComputedStyle(tag).fontSize);
-      tag.style.fontSize = `${(target / current) * size}px`;
-    }
-
-    void document.fonts.ready.then(fit);
-    const observer = new ResizeObserver(fit);
-    observer.observe(title);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <Link href="/" className="flex shrink-0 items-start gap-2">
-      <Sparkles className="mt-0.5 size-5 text-[var(--gold)]" />
-      <span className="flex flex-col">
-        <span
-          ref={titleRef}
-          className="font-[family-name:var(--font-display)] text-2xl leading-none tracking-tight text-[var(--cream)]"
-        >
+    <Link href="/" className="flex min-w-0 items-center gap-1.5">
+      <Sparkles className="size-4 shrink-0 text-[var(--gold)] sm:size-5" />
+      <span className="min-w-0 leading-tight">
+        <span className="block font-[family-name:var(--font-display)] text-[1.15rem] leading-none tracking-tight text-[var(--cream)] sm:text-2xl">
           MYTHH
         </span>
-        <span className="mt-0.5 block h-3.5 overflow-hidden">
-          <span
-            ref={tagRef}
-            className="block origin-top scale-y-[0.68] whitespace-nowrap font-[family-name:var(--font-display)] leading-none text-[var(--gold)]"
-          >
-            or truth?
-          </span>
+        <span className="mt-0.5 block font-[family-name:var(--font-display)] text-[0.7rem] leading-none text-[var(--gold)] max-[359px]:hidden sm:text-sm">
+          or truth?
         </span>
       </span>
     </Link>
@@ -90,12 +58,25 @@ export function Header({ country, category }: { country: string; category: strin
     router.push(`/search?q=${encodeURIComponent(next)}`);
   }
 
-  return (
-    <header className="sticky top-0 z-40 w-full max-w-full overflow-x-hidden border-b border-[var(--line)] bg-[color:var(--ink)]/92 backdrop-blur-md">
-      <div className="flex min-h-16 min-w-0 w-full items-center gap-3 px-4 py-2.5 md:gap-4 md:px-8 lg:px-12">
-        <BrandMark />
+  const signedIn = Boolean(me?.profile);
 
-        <nav className="hidden min-w-0 items-center gap-5 text-sm text-[var(--muted)] lg:flex">
+  return (
+    <header className="sticky top-0 z-40 w-full max-w-full overflow-x-hidden border-b border-[var(--line)] bg-[color:var(--ink)]/92 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md">
+      <div className="flex w-full min-w-0 items-center gap-1.5 px-2 py-2 sm:gap-3 sm:px-4 lg:px-8">
+        <div className="min-w-0 shrink-0">
+          <BrandMark />
+        </div>
+
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden sm:max-w-md sm:gap-2">
+          <div className="min-w-0 flex-1 basis-0">
+            <CategorySwitch value={category} compact />
+          </div>
+          <div className="min-w-0 flex-1 basis-0">
+            <CountrySwitch value={country} compact />
+          </div>
+        </div>
+
+        <nav className="hidden min-w-0 shrink-0 items-center gap-4 text-sm text-[var(--muted)] xl:flex">
           {links.map((link) => (
             <Link
               key={link.href}
@@ -108,25 +89,23 @@ export function Header({ country, category }: { country: string; category: strin
           ))}
         </nav>
 
-        <form noValidate onSubmit={onSearch} className="relative ml-auto hidden min-w-0 max-w-xl flex-1 lg:block">
+        <form noValidate onSubmit={onSearch} className="relative hidden min-w-0 max-w-xs flex-1 lg:block lg:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search myths"
-            className="w-full rounded-full border border-[var(--line)] bg-[var(--ink-soft)] py-2 pr-4 pl-10 text-sm text-[var(--cream)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--gold)]"
+            className="w-full min-w-0 rounded-full border border-[var(--line)] bg-[var(--ink-soft)] py-2 pr-4 pl-10 text-sm text-[var(--cream)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--gold)]"
           />
         </form>
 
-        <div className="ml-auto flex min-w-0 shrink-0 items-center gap-3 lg:ml-0">
-          <CategorySwitch value={category} />
-          <CountrySwitch value={country} />
-          {me?.profile ? (
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {signedIn ? (
             <>
-              {me.profile.role === "ADMIN" && (
+              {me?.profile?.role === "ADMIN" && (
                 <Link
                   href="/admin"
-                  className="inline-flex items-center gap-1.5 text-sm text-[var(--gold)]"
+                  className="hidden items-center gap-1.5 text-sm text-[var(--gold)] xl:inline-flex"
                 >
                   <Shield className="size-4" />
                   Admin
@@ -134,21 +113,22 @@ export function Header({ country, category }: { country: string; category: strin
               )}
               <Link
                 href="/profile"
-                className="inline-flex max-w-36 items-center gap-2 truncate text-sm text-[var(--cream)] sm:max-w-48"
+                className="inline-flex items-center gap-2 truncate text-sm text-[var(--cream)]"
+                aria-label="Profile"
               >
                 <Avatar
-                  src={me.profile.avatar_url}
-                  name={me.profile.display_name ?? me.profile.email ?? "Profile"}
+                  src={me?.profile?.avatar_url}
+                  name={me?.profile?.display_name ?? me?.profile?.email ?? "Profile"}
                   className="size-7 text-[10px]"
                 />
-                <span className="truncate">
-                  {me.profile.display_name ?? me.profile.email ?? "Profile"}
+                <span className="hidden max-w-32 truncate xl:inline">
+                  {me?.profile?.display_name ?? me?.profile?.email ?? "Profile"}
                 </span>
               </Link>
               <button
                 type="button"
                 onClick={() => logout()}
-                className="hidden items-center gap-1.5 text-sm text-[var(--muted)] hover:text-[var(--cream)] lg:inline-flex"
+                className="hidden items-center gap-1.5 text-sm text-[var(--muted)] hover:text-[var(--cream)] xl:inline-flex"
               >
                 <LogOut className="size-4" />
                 Log out
@@ -158,27 +138,27 @@ export function Header({ country, category }: { country: string; category: strin
             <button
               type="button"
               onClick={login}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 py-2 text-sm font-medium text-[var(--ink)]"
+              className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[var(--gold)] px-2.5 py-1 text-[11px] font-medium text-[var(--ink)] sm:px-4 sm:py-2 sm:text-sm"
             >
-              <LogIn className="size-4" />
+              <LogIn className="mr-1 hidden size-4 sm:inline" />
               Sign in
             </button>
           )}
 
           <button
             type="button"
-            className="text-[var(--cream)] lg:hidden"
+            className="p-1 text-[var(--cream)] xl:hidden"
             onClick={() => setOpen((value) => !value)}
             aria-label={open ? "Close menu" : "Open menu"}
           >
-            {open ? <X className="size-6" /> : <Menu className="size-6" />}
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
         </div>
       </div>
 
       {open && (
-        <div className="border-t border-[var(--line)] px-5 py-4 lg:hidden">
-          <form noValidate onSubmit={onSearch} className="relative mb-4">
+        <div className="border-t border-[var(--line)] px-4 py-4 xl:hidden">
+          <form noValidate onSubmit={onSearch} className="relative mb-4 lg:hidden">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]" />
             <input
               value={query}
