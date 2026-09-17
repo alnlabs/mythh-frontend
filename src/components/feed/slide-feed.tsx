@@ -27,7 +27,14 @@ import {
 import { voteForMyth, rememberMyVote, forgetMyVote, readMyVotes } from "@/lib/my-votes";
 import { openNativeShare } from "@/lib/share-card";
 import { countryName } from "@/lib/country";
-import { mythHi } from "@/lib/myth-hi";
+import {
+  CLAIM_LANGS,
+  availableClaimLangs,
+  mythCopy,
+  readClaimLang,
+  writeClaimLang,
+  type ClaimLang,
+} from "@/lib/myth-i18n";
 import type { Advertisement, FeedItem, Myth } from "@/lib/types";
 
 const WINDOW = 5;
@@ -745,14 +752,25 @@ function MythSlide({
   onComments: () => void;
   onShare: () => void;
 }) {
-  const hindi = mythHi(myth.slug);
-  const [inHindi, setInHindi] = useState(Boolean(hindi));
-  const title = inHindi && hindi ? hindi.title : myth.title;
-  const explanation = inHindi && hindi ? hindi.explanation : myth.explanation;
+  const langs = availableClaimLangs(myth.slug);
+  const [lang, setLang] = useState<ClaimLang>(langs.includes("hi") ? "hi" : "en");
+  const copy = mythCopy(myth.slug, lang, { title: myth.title, explanation: myth.explanation });
+  const showLangPicker = langs.length > 1;
 
   useEffect(() => {
-    setInHindi(Boolean(mythHi(myth.slug)));
+    const nextLangs = availableClaimLangs(myth.slug);
+    const stored = readClaimLang();
+    if (stored && nextLangs.includes(stored)) {
+      setLang(stored);
+      return;
+    }
+    setLang(nextLangs.includes("hi") ? "hi" : "en");
   }, [myth.slug]);
+
+  function chooseLang(next: ClaimLang) {
+    setLang(next);
+    writeClaimLang(next);
+  }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center px-5 py-6 md:px-16 lg:px-20">
@@ -765,16 +783,23 @@ function MythSlide({
         </p>
 
         <h1 className="mt-7 max-w-full break-words font-[family-name:var(--font-display)] text-[2.25rem] leading-tight text-[var(--cream)] sm:text-5xl lg:text-6xl">
-          “{title}”
+          “{copy.title}”
         </h1>
-        {hindi && (
-          <button
-            type="button"
-            onClick={() => setInHindi((value) => !value)}
-            className="mt-3 text-xs text-[var(--gold)] hover:text-[var(--cream)]"
-          >
-            {inHindi ? "Read in English" : "हिन्दी में पढ़ें"}
-          </button>
+        {showLangPicker && (
+          <label className="mt-3 inline-flex items-center gap-2 text-xs text-[var(--muted)]">
+            <span className="sr-only">Read this claim in</span>
+            <select
+              value={lang}
+              onChange={(event) => chooseLang(event.target.value as ClaimLang)}
+              className="rounded-full border border-[var(--line)] bg-[var(--ink-soft)] px-3 py-1.5 text-xs text-[var(--gold)]"
+            >
+              {CLAIM_LANGS.filter((item) => langs.includes(item.code)).map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
 
         <div className="mt-10 grid w-full max-w-xl grid-cols-2 gap-3">
@@ -799,7 +824,7 @@ function MythSlide({
           </p>
         )}
         {guess && (
-          <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--muted)]">{explanation}</p>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--muted)]">{copy.explanation}</p>
         )}
       </div>
 

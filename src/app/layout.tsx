@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Geist, Noto_Sans_Devanagari } from "next/font/google";
+import { Fraunces, Geist, Noto_Sans_Bengali, Noto_Sans_Devanagari, Noto_Sans_Gujarati, Noto_Sans_Gurmukhi, Noto_Sans_Kannada, Noto_Sans_Malayalam, Noto_Sans_Tamil, Noto_Sans_Telugu } from "next/font/google";
 
 import { AuthProvider } from "@/components/auth-provider";
 import { DisableNativeValidation } from "@/components/disable-native-validation";
@@ -26,6 +26,59 @@ const notoDevanagari = Noto_Sans_Devanagari({
   subsets: ["devanagari"],
   weight: ["400", "500", "600", "700"],
 });
+
+const notoBengali = Noto_Sans_Bengali({
+  variable: "--font-bengali",
+  subsets: ["bengali"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const notoTamil = Noto_Sans_Tamil({
+  variable: "--font-tamil",
+  subsets: ["tamil"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const notoTelugu = Noto_Sans_Telugu({
+  variable: "--font-telugu",
+  subsets: ["telugu"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const notoKannada = Noto_Sans_Kannada({
+  variable: "--font-kannada",
+  subsets: ["kannada"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const notoMalayalam = Noto_Sans_Malayalam({
+  variable: "--font-malayalam",
+  subsets: ["malayalam"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const notoGujarati = Noto_Sans_Gujarati({
+  variable: "--font-gujarati",
+  subsets: ["gujarati"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const notoGurmukhi = Noto_Sans_Gurmukhi({
+  variable: "--font-gurmukhi",
+  subsets: ["gurmukhi"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const regionalFontClass = [
+  notoDevanagari.variable,
+  notoBengali.variable,
+  notoTamil.variable,
+  notoTelugu.variable,
+  notoKannada.variable,
+  notoMalayalam.variable,
+  notoGujarati.variable,
+  notoGurmukhi.variable,
+].join(" ");
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -62,7 +115,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-IN" className={`${geist.variable} ${fraunces.variable} ${notoDevanagari.variable} h-full`} suppressHydrationWarning>
+    <html lang="en-IN" className={`${geist.variable} ${fraunces.variable} ${regionalFontClass} h-full`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>

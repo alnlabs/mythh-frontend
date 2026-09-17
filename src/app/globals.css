@@ -35,8 +35,8 @@ html[data-theme="light"] {
 @theme inline {
   --color-background: var(--ink);
   --color-foreground: var(--cream);
-  --font-sans: var(--font-geist-sans), var(--font-devanagari);
-  --font-display: var(--font-fraunces), var(--font-devanagari);
+  --font-sans: var(--font-geist-sans), var(--font-devanagari), var(--font-bengali), var(--font-tamil), var(--font-telugu), var(--font-kannada), var(--font-malayalam), var(--font-gujarati), var(--font-gurmukhi);
+  --font-display: var(--font-fraunces), var(--font-devanagari), var(--font-bengali), var(--font-tamil), var(--font-telugu), var(--font-kannada), var(--font-malayalam), var(--font-gujarati), var(--font-gurmukhi);
 }
 
 html,
@@ -50,7 +50,7 @@ body {
 body {
   background: radial-gradient(circle at top, var(--glow) 0%, var(--ink) 42%);
   color: var(--cream);
-  font-family: var(--font-geist-sans), var(--font-devanagari), sans-serif;
+  font-family: var(--font-geist-sans), var(--font-devanagari), var(--font-bengali), var(--font-tamil), var(--font-telugu), var(--font-kannada), var(--font-malayalam), var(--font-gujarati), var(--font-gurmukhi), sans-serif;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
