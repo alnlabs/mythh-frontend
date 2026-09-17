@@ -35,8 +35,8 @@ html[data-theme="light"] {
 @theme inline {
   --color-background: var(--ink);
   --color-foreground: var(--cream);
-  --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-geist-sans), var(--font-devanagari);
+  --font-display: var(--font-fraunces), var(--font-devanagari);
 }
 
 html,
@@ -50,7 +50,7 @@ body {
 body {
   background: radial-gradient(circle at top, var(--glow) 0%, var(--ink) 42%);
   color: var(--cream);
-  font-family: var(--font-geist-sans), sans-serif;
+  font-family: var(--font-geist-sans), var(--font-devanagari), sans-serif;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 

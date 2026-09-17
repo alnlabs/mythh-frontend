@@ -27,6 +27,7 @@ import {
 import { voteForMyth, rememberMyVote, forgetMyVote, readMyVotes } from "@/lib/my-votes";
 import { openNativeShare } from "@/lib/share-card";
 import { countryName } from "@/lib/country";
+import { mythHi } from "@/lib/myth-hi";
 import type { Advertisement, FeedItem, Myth } from "@/lib/types";
 
 const WINDOW = 5;
@@ -744,6 +745,15 @@ function MythSlide({
   onComments: () => void;
   onShare: () => void;
 }) {
+  const hindi = mythHi(myth.slug);
+  const [inHindi, setInHindi] = useState(Boolean(hindi));
+  const title = inHindi && hindi ? hindi.title : myth.title;
+  const explanation = inHindi && hindi ? hindi.explanation : myth.explanation;
+
+  useEffect(() => {
+    setInHindi(Boolean(mythHi(myth.slug)));
+  }, [myth.slug]);
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center px-5 py-6 md:px-16 lg:px-20">
       <div className="flex w-full min-w-0 max-w-5xl flex-1 flex-col items-center justify-center text-center">
@@ -755,8 +765,17 @@ function MythSlide({
         </p>
 
         <h1 className="mt-7 max-w-full break-words font-[family-name:var(--font-display)] text-[2.25rem] leading-tight text-[var(--cream)] sm:text-5xl lg:text-6xl">
-          “{myth.title}”
+          “{title}”
         </h1>
+        {hindi && (
+          <button
+            type="button"
+            onClick={() => setInHindi((value) => !value)}
+            className="mt-3 text-xs text-[var(--gold)] hover:text-[var(--cream)]"
+          >
+            {inHindi ? "Read in English" : "हिन्दी में पढ़ें"}
+          </button>
+        )}
 
         <div className="mt-10 grid w-full max-w-xl grid-cols-2 gap-3">
           <VoteButton
@@ -778,6 +797,9 @@ function MythSlide({
           <p className="mt-4 text-sm text-[var(--muted)]">
             Based on {myth.stats.responseCount.toLocaleString("en-IN")} responses
           </p>
+        )}
+        {guess && (
+          <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--muted)]">{explanation}</p>
         )}
       </div>
 
