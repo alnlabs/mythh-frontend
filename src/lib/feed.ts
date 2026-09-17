@@ -47,7 +47,7 @@ export function buildMythFeed(start: Myth, myths: Myth[], ads: Advertisement[]) 
 }
 
 const SEEN_KEY = "mythh_seen_myths";
-const SEEN_CAP = 120;
+const SEEN_CAP = 500;
 const RECENT_BLOCK = 16;
 
 export function readSeenMyths() {

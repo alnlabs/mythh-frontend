@@ -31,7 +31,7 @@ import type { Advertisement, FeedItem, Myth } from "@/lib/types";
 
 const WINDOW = 5;
 const STATS_POLL_MS = 4000;
-const FEED_PAGE_SIZE = 40;
+const FEED_PAGE_SIZE = 1000;
 
 function uniqueMyths(items: Myth[]) {
   const seen = new Set<string>();

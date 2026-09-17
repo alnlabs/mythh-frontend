@@ -5,7 +5,7 @@ import { absoluteUrl } from "@/lib/seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [{ myths }, { categories }] = await Promise.all([
-    api.myths("?limit=200"),
+    api.myths("?limit=1000"),
     api.categories(),
   ]);
 

@@ -28,7 +28,7 @@ const loadMyth = cache(async (slug: string): Promise<Myth | null> => {
 
 export async function generateStaticParams() {
   try {
-    const { myths } = await api.myths("?limit=40");
+    const { myths } = await api.myths("?limit=200");
     return myths.map((myth) => ({ slug: myth.slug }));
   } catch {
     return [];
