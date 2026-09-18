@@ -74,6 +74,11 @@ export function mythCopy(
   return TABLES[lang][slug] ?? fallback;
 }
 
+export function hasClaimCopy(slug: string, lang: ClaimLang) {
+  if (lang === "en") return true;
+  return Boolean(TABLES[lang][slug]);
+}
+
 export function availableClaimLangs(slug: string): ClaimLang[] {
   const langs: ClaimLang[] = ["en"];
   for (const lang of CLAIM_LANGS) {

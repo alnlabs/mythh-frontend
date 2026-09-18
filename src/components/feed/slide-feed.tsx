@@ -30,6 +30,7 @@ import { countryName } from "@/lib/country";
 import {
   CLAIM_LANGS,
   availableClaimLangs,
+  hasClaimCopy,
   mythCopy,
   readClaimLang,
   writeClaimLang,
@@ -182,6 +183,12 @@ function fillWindow(
   return next;
 }
 
+function mythsForLang(myths: Myth[], lang: ClaimLang, preferTranslated: boolean) {
+  if (!preferTranslated || lang === "en") return myths;
+  const matched = myths.filter((myth) => hasClaimCopy(myth.slug, lang));
+  return matched.length ? matched : myths;
+}
+
 function initialDeck(items: FeedItem[]) {
   const start = startItem(items);
   if (!start) return [];
@@ -201,6 +208,7 @@ export function SlideFeed({
   category?: string;
 }) {
   const { me } = useAuth();
+  const signedIn = Boolean(me?.profile);
   const seedMyths = useMemo(
     () => items.filter((item): item is Extract<FeedItem, { kind: "myth" }> => item.kind === "myth").map((item) => item.myth),
     [items],
@@ -212,6 +220,22 @@ export function SlideFeed({
   const [moreMyths, setMoreMyths] = useState<Myth[]>([]);
   const [moreAds, setMoreAds] = useState<Advertisement[]>([]);
   const myths = useMemo(() => uniqueMyths([...seedMyths, ...moreMyths]), [seedMyths, moreMyths]);
+  const visibleMyths = useMemo(
+    () => (signedIn ? myths : myths.filter((myth) => !myth.isAdult)),
+    [myths, signedIn],
+  );
+  const [claimLang, setClaimLang] = useState<ClaimLang>("en");
+  const [preferTranslated, setPreferTranslated] = useState(false);
+  const langPool = useMemo(
+    () => mythsForLang(visibleMyths, claimLang, preferTranslated),
+    [visibleMyths, claimLang, preferTranslated],
+  );
+  const langPoolRef = useRef(langPool);
+  langPoolRef.current = langPool;
+  const claimLangRef = useRef(claimLang);
+  claimLangRef.current = claimLang;
+  const preferTranslatedRef = useRef(preferTranslated);
+  preferTranslatedRef.current = preferTranslated;
   const ads = useMemo(() => uniqueAds([...seedAds, ...moreAds]), [seedAds, moreAds]);
   const [deck, setDeck] = useState<FeedItem[]>(() => initialDeck(items));
   const [index, setIndex] = useState(0);
@@ -292,6 +316,26 @@ export function SlideFeed({
   }, [sessionKey]);
 
   useEffect(() => {
+    const stored = readClaimLang();
+    const first = startMyth(items);
+    if (stored) {
+      setClaimLang(stored);
+      setPreferTranslated(stored !== "en");
+      return;
+    }
+    setPreferTranslated(false);
+    setClaimLang(first && availableClaimLangs(first.slug).includes("hi") ? "hi" : "en");
+  }, [sessionKey, items]);
+
+  useEffect(() => {
+    setDeck((now) => {
+      const idx = indexRef.current;
+      if (!now[idx]) return now;
+      return fillWindow(now.slice(0, idx + 1), idx, langPoolRef.current, ads);
+    });
+  }, [claimLang, preferTranslated, ads]);
+
+  useEffect(() => {
     let cancelled = false;
     const query = new URLSearchParams({ limit: String(FEED_PAGE_SIZE) });
     if (country) query.set("country", country);
@@ -301,7 +345,11 @@ export function SlideFeed({
       api.advertisements().catch(() => ({ advertisements: [] as Advertisement[] })),
     ]).then(([{ myths: nextMyths }, { advertisements }]) => {
       if (cancelled) return;
-      const pool = uniqueMyths([...seedMyths, ...nextMyths]);
+      const pool = mythsForLang(
+        uniqueMyths([...seedMyths, ...nextMyths]).filter((item) => signedIn || !item.isAdult),
+        claimLangRef.current,
+        preferTranslatedRef.current,
+      );
       const adPool = uniqueAds([...seedAds, ...advertisements]);
       setMoreMyths(nextMyths);
       setMoreAds(advertisements);
@@ -312,7 +360,7 @@ export function SlideFeed({
     };
     // seed lists belong to this opened claim; sessionKey already reties them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionKey, country, category]);
+  }, [sessionKey, country, category, signedIn]);
 
   useEffect(() => {
     if (!myth) return;
@@ -395,7 +443,7 @@ export function SlideFeed({
       const { commentsOpen: comments, shareOpen: sharing } = stateRef.current;
       if (comments || sharing) return;
 
-      const filled = fillWindow(deckRef.current, nextIndex, myths, ads);
+      const filled = fillWindow(deckRef.current, nextIndex, langPool, ads);
       const target = Math.min(nextIndex, filled.length - 1);
       if (target === indexRef.current) {
         paint(0, true);
@@ -424,7 +472,7 @@ export function SlideFeed({
       if (item?.kind === "myth") rememberSeenMyth(item.myth.id);
       paint(0, false);
     },
-    [ads, myths, settlePending],
+    [ads, langPool, settlePending],
   );
 
   const go = useCallback(
@@ -595,6 +643,12 @@ export function SlideFeed({
     setShareOpen(true);
   }
 
+  function chooseClaimLang(next: ClaimLang) {
+    setClaimLang(next);
+    writeClaimLang(next);
+    setPreferTranslated(next !== "en");
+  }
+
   if (!current) {
     return (
       <div className="flex flex-1 items-center justify-center text-[var(--muted)]">
@@ -637,7 +691,7 @@ export function SlideFeed({
     >
       <DesktopNav
         canPrev={index > 0}
-        canNext={index < deck.length - 1 || myths.length > 1}
+        canNext={index < deck.length - 1 || langPool.length > 1}
         onPrev={() => go(-1)}
         onNext={() => go(1)}
       />
@@ -658,6 +712,8 @@ export function SlideFeed({
                 item.kind === "myth" &&
                 (Boolean(guess) || item.myth.stats.responseCount > 0)
               }
+              lang={claimLang}
+              onLang={chooseClaimLang}
               onVote={vote}
               onComments={() => setCommentsOpen(true)}
               onShare={() => {
@@ -695,6 +751,8 @@ function FeedPage({
   active,
   guess,
   showStats,
+  lang,
+  onLang,
   onVote,
   onComments,
   onShare,
@@ -705,6 +763,8 @@ function FeedPage({
   active: boolean;
   guess: "TRUE" | "FALSE" | null;
   showStats: boolean;
+  lang: ClaimLang;
+  onLang: (lang: ClaimLang) => void;
   onVote: (value: "TRUE" | "FALSE") => void;
   onComments: () => void;
   onShare: () => void;
@@ -726,6 +786,8 @@ function FeedPage({
           number={number}
           guess={guess}
           showStats={showStats}
+          lang={lang}
+          onLang={onLang}
           onVote={onVote}
           onComments={onComments}
           onShare={onShare}
@@ -740,6 +802,8 @@ function MythSlide({
   number,
   guess,
   showStats,
+  lang,
+  onLang,
   onVote,
   onComments,
   onShare,
@@ -748,29 +812,13 @@ function MythSlide({
   number: number;
   guess: "TRUE" | "FALSE" | null;
   showStats: boolean;
+  lang: ClaimLang;
+  onLang: (lang: ClaimLang) => void;
   onVote: (value: "TRUE" | "FALSE") => void;
   onComments: () => void;
   onShare: () => void;
 }) {
-  const langs = availableClaimLangs(myth.slug);
-  const [lang, setLang] = useState<ClaimLang>(langs.includes("hi") ? "hi" : "en");
   const copy = mythCopy(myth.slug, lang, { title: myth.title, explanation: myth.explanation });
-  const showLangPicker = langs.length > 1;
-
-  useEffect(() => {
-    const nextLangs = availableClaimLangs(myth.slug);
-    const stored = readClaimLang();
-    if (stored && nextLangs.includes(stored)) {
-      setLang(stored);
-      return;
-    }
-    setLang(nextLangs.includes("hi") ? "hi" : "en");
-  }, [myth.slug]);
-
-  function chooseLang(next: ClaimLang) {
-    setLang(next);
-    writeClaimLang(next);
-  }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center px-5 py-6 md:px-16 lg:px-20">
@@ -785,22 +833,20 @@ function MythSlide({
         <h1 className="mt-7 max-w-full break-words font-[family-name:var(--font-display)] text-[2.25rem] leading-tight text-[var(--cream)] sm:text-5xl lg:text-6xl">
           “{copy.title}”
         </h1>
-        {showLangPicker && (
-          <label className="mt-3 inline-flex items-center gap-2 text-xs text-[var(--muted)]">
-            <span className="sr-only">Read this claim in</span>
-            <select
-              value={lang}
-              onChange={(event) => chooseLang(event.target.value as ClaimLang)}
-              className="rounded-full border border-[var(--line)] bg-[var(--ink-soft)] px-3 py-1.5 text-xs text-[var(--gold)]"
-            >
-              {CLAIM_LANGS.filter((item) => langs.includes(item.code)).map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <label className="mt-3 inline-flex items-center gap-2 text-xs text-[var(--muted)]">
+          <span className="sr-only">Read this claim in</span>
+          <select
+            value={lang}
+            onChange={(event) => onLang(event.target.value as ClaimLang)}
+            className="rounded-full border border-[var(--line)] bg-[var(--ink-soft)] px-3 py-1.5 text-xs text-[var(--gold)]"
+          >
+            {CLAIM_LANGS.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="mt-10 grid w-full max-w-xl grid-cols-2 gap-3">
           <VoteButton

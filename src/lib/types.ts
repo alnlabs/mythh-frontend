@@ -10,6 +10,7 @@ export type Myth = {
   createdAt: string;
   updatedAt: string;
   countryCode: string | null;
+  isAdult?: boolean;
   category: { id: string; name: string; slug: string } | null;
   creator: { id: string | null; displayName: string; avatarUrl: string | null };
   sources: { id: string; title: string | null; url: string }[];
